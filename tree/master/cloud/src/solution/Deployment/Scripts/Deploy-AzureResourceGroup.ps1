@@ -76,7 +76,9 @@ Set-Content -Path $TemplateParametersFile -Value (ConvertTo-Json -InputObject $p
 
 Import-Module Azure -ErrorAction SilentlyContinue
 #Add-AzureAccount
-$subsc = Login-AzureRmAccount
+#$subsc = Login-AzureRmAccount
+$creds = Get-Credential
+$subsc = Add-AzureRmAccount -Tenant '1ca17d08-68f3-4d19-b6c1-79fb8d2e6859'
 $global:TenantName = $subsc.Context.Tenant.Domain
 #$Tenant_id = $subsc.Context.Tenant.TenantId
 
@@ -164,7 +166,7 @@ New-AzureRmResourceGroupDeployment -Name ((Get-ChildItem $TemplateFile).BaseName
                                    @OptionalParameters `
                                    -Force -Verbose
 
-$creds = Get-Credential -Message "Enter credentials for connecting to Azure"
+#$creds = Get-Credential -Message "Enter credentials for connecting to Azure"
 
 Write-Output "Getting the storage key to write to key vault..."
 $StorageAccountKey = Get-AzureRmStorageAccountKey -Name $storageAccount_name -ResourceGroupName $ResourceGroupName
@@ -183,7 +185,6 @@ Write-Output "Getting the result source ID..."
 $SearchResultSourceId = & ".\Microsoft.Legal.MatterCenter.UpdateAppConfig.exe" "4" $SPCredential.UserName $SPPassword
 $SearchResultSourceId.ToString()
 cd $PSScriptRoot
-
 
 $custScriptFile = [System.IO.Path]::Combine($PSScriptRoot, 'KeyVault-Config.ps1')
 Invoke-Expression $custScriptFile 

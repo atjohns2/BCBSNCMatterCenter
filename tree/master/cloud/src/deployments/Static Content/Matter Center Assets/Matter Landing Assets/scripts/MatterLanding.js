@@ -52,7 +52,7 @@ var oMatterLandingCommonObjects = {
 
 /* Azure page URLs */
 var azurePages = {
-    "managePermission": "[[[Manage Permission Relative Url]]]"
+    "managePermission": "/pages/managepermissions.aspx"
 };
 
 /* Modal Dialog object */

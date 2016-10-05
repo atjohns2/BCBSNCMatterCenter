@@ -10,9 +10,9 @@
 	    [Parameter(Mandatory=$true)]
         [String]$PassWord
     )  
-	Add-AzureAccount
+	#Add-AzureAccount
 
-	Select-AzureSubscription
+	#Select-AzureSubscription
 
 	"Creating web job..."
     $webJobBinariesPath = "$PSScriptRoot\WebJob\MatterCenterWebJobs.zip"

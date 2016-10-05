@@ -9,23 +9,23 @@ var oCommonHtmlChunk = {
 
 /* Footer links for the page */
 var oFooterLinks = {
-    "feedback": "[[[Feedback link]]]",
-    "termsOfUse": "[[[Terms of use link]]]",
-    "privacy": "[[[Privacy link]]]",
-    "searchPageURL": "[[[Search Page]]]?k=@@searchText",
+    "feedback": "[Enter URL for Support, e.g. mailto:support@supportsite.com]",
+    "termsOfUse": "[Enter URL for Terms of use, e.g. termofuse.supportsite.com]",
+    "privacy": "[Enter URL for Privacy terms, e.g. privacy.supportsite.com]",
+    "searchPageURL": "/search/Pages/results.aspx?k=@@searchText",
     "dashboardDocumentsQueryString": "?section=2",
     "matterDocumentsQueryString": "?section=1",
-    "dashboard": "[[[Tenant Web Dashboard Url]]]",
-    "settingsPage": "[[[Tenant Settings Url]]]",
-    "logoLink": "[[[Logo link]]]"
+    "dashboard": "/sitepages/MatterCenterHome.aspx",
+    "settingsPage": "/SitePages/Settings.aspx",
+    "logoLink": "[Enter URL for Logo link, e.g. site.supportsite.com/logo.aspx]"
 },
 
 /* Common objects*/
 oCommonLinks = {
-    "AzureSiteUrl": "[[[Azure Site Url]]]",
-    "sCatalogSite": "[[[Catalog site relative Url]]]/",
-    "applicationInsightsId": "[[[App Insights ID]]]",
-    "oMatterCenterAssetsLocation": "[[[Common Assets Url]]]",
+    "AzureSiteUrl": "https://BCBSNCMatterCenterWebApp09121754.azurewebsites.net",
+    "sCatalogSite": "/sites/apps//",
+    "applicationInsightsId": "0c97a337-794c-4a52-a5e0-930c993981b0",
+    "oMatterCenterAssetsLocation": "/SiteAssets/Matter Center Assets/Common Assets/",
 };
 
 /* Assets location */
