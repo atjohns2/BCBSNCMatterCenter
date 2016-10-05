@@ -30,7 +30,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
     /// <summary>
     /// This class contains all the methods which are related to spo search
     /// </summary>
-    public class Search:ISearch
+    public class Search : ISearch
     {
         private GeneralSettings generalSettings;
         private SearchSettings searchSettings;
@@ -53,14 +53,14 @@ namespace Microsoft.Legal.MatterCenter.Repository
         /// <param name="searchSettings"></param>
         public Search(ISPOAuthorization spoAuthorization,
             IConfigurationRoot configuration,
-            ICustomLogger customLogger,            
+            ICustomLogger customLogger,
             IUsersDetails userDetails,
             ISPList spList,
             IOptions<GeneralSettings> generalSettings,
             IOptions<SharedSettings> sharedSettings,
             IOptions<LogTables> logTables,
             IOptions<SearchSettings> searchSettings,
-            IOptions<CamlQueries> camlQueries, 
+            IOptions<CamlQueries> camlQueries,
             IOptions<ListNames> listNames,
             IOptions<ErrorSettings> errorSettings)
         {
@@ -93,7 +93,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
             try
             {
                 clientContext = null;
-                clientContext = spoAuthorization.GetClientContext(client.Url);                
+                clientContext = spoAuthorization.GetClientContext(client.Url);
                 KeywordQuery keywordQuery = new KeywordQuery(clientContext);
                 if (string.IsNullOrWhiteSpace(searchObject.SearchTerm))
                 {
@@ -104,23 +104,23 @@ namespace Microsoft.Legal.MatterCenter.Repository
                 {
                     if (searchObject.Filters.FilterByMe == 1)
                     {
-                            
+
                         Users currentUserDetail = userDetails.GetLoggedInUserDetails(clientContext);
                         string userTitle = currentUserDetail.Name;
-                        searchObject.SearchTerm = string.Concat(searchObject.SearchTerm, ServiceConstants.SPACE, 
-                            ServiceConstants.OPERATOR_AND, ServiceConstants.SPACE, 
-                            ServiceConstants.OPENING_BRACKET, searchSettings.ManagedPropertyResponsibleAttorney, 
-                            ServiceConstants.COLON, ServiceConstants.SPACE, ServiceConstants.DOUBLE_QUOTE, userTitle, 
-                            ServiceConstants.DOUBLE_QUOTE, ServiceConstants.SPACE, ServiceConstants.OPERATOR_AND, ServiceConstants.SPACE, 
-                            searchSettings.ManagedPropertyTeamMembers, ServiceConstants.COLON, ServiceConstants.SPACE, 
+                        searchObject.SearchTerm = string.Concat(searchObject.SearchTerm, ServiceConstants.SPACE,
+                            ServiceConstants.OPERATOR_AND, ServiceConstants.SPACE,
+                            ServiceConstants.OPENING_BRACKET, searchSettings.ManagedPropertyResponsibleAttorney,
+                            ServiceConstants.COLON, ServiceConstants.SPACE, ServiceConstants.DOUBLE_QUOTE, userTitle,
+                            ServiceConstants.DOUBLE_QUOTE, ServiceConstants.SPACE, ServiceConstants.OPERATOR_AND, ServiceConstants.SPACE,
+                            searchSettings.ManagedPropertyTeamMembers, ServiceConstants.COLON, ServiceConstants.SPACE,
                             ServiceConstants.DOUBLE_QUOTE, userTitle,
                             ServiceConstants.DOUBLE_QUOTE, ServiceConstants.SPACE, ServiceConstants.CLOSING_BRACKET);
                     }
 
                     keywordQuery = FilterMatters(searchObject, keywordQuery);
 
-                    keywordQuery = KeywordQueryMetrics(client, searchObject, keywordQuery, 
-                        ServiceConstants.DOCUMENT_LIBRARY_FILTER_CONDITION, 
+                    keywordQuery = KeywordQueryMetrics(client, searchObject, keywordQuery,
+                        ServiceConstants.DOCUMENT_LIBRARY_FILTER_CONDITION,
                         searchSettings.ManagedPropertyIsMatter, true);
 
                     // Create a list of managed properties which are required to be present in search results
@@ -133,7 +133,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                     var managedColumns = configuration.GetSection("ContentTypes").GetSection("ManagedColumns").GetChildren();
                     foreach (var key in managedColumns)
                     {
-                        managedProperties.Add("MC" + key.Value);
+                        managedProperties.Add(searchSettings.ManagedPropertyExtension + key.Value.Replace("LPC", ""));
                     }
                     managedProperties.Add(searchSettings.ManagedPropertyMatterId);
                     managedProperties.Add(searchSettings.ManagedPropertyCustomTitle);
@@ -154,13 +154,13 @@ namespace Microsoft.Legal.MatterCenter.Repository
                 clientContext.Dispose();
                 return searchResponseVM;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 customLogger.LogError(ex, MethodBase.GetCurrentMethod().DeclaringType.Name, MethodBase.GetCurrentMethod().Name, logTables.SPOLogTable);
                 throw;
             }
-            
-        }        
+
+        }
 
         /// <summary>
         /// Gets the matters based on search criteria.
@@ -171,11 +171,11 @@ namespace Microsoft.Legal.MatterCenter.Repository
         {
             SearchResponseVM searchResponseVM = null;
             try
-            {                
+            {
                 var client = searchRequestVM.Client;
                 var searchObject = searchRequestVM.SearchObject;
                 clientContext = null;
-                clientContext = spoAuthorization.GetClientContext(client.Url);                
+                clientContext = spoAuthorization.GetClientContext(client.Url);
                 KeywordQuery keywordQuery = new KeywordQuery(clientContext);
                 if (string.IsNullOrWhiteSpace(searchObject.SearchTerm))
                 {
@@ -194,7 +194,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
 
                     keywordQuery = FilterDocuments(searchObject, keywordQuery);
 
-                    keywordQuery = KeywordQueryMetrics(client, searchObject, keywordQuery, ServiceConstants.DOCUMENT_ITEM_FILTER_CONDITION, 
+                    keywordQuery = KeywordQueryMetrics(client, searchObject, keywordQuery, ServiceConstants.DOCUMENT_ITEM_FILTER_CONDITION,
                         searchSettings.ManagedPropertyIsDocument, false);
 
                     // Create a list of managed properties which are required to be present in search results
@@ -220,13 +220,19 @@ namespace Microsoft.Legal.MatterCenter.Repository
                     managedProperties.Add(searchSettings.ManagedPropertySPWebUrl);
                     managedProperties.Add(searchSettings.ManagedPropertyAuthor);
                     managedProperties.Add(searchSettings.ManagedPropertyMatterGuid);
+                    
                     //Filter on Result source to fetch only Matter Center specific results
                     keywordQuery.SourceId = new Guid(searchSettings.SearchResultSourceID);
+                    
+                    var managedColumns = configuration.GetSection("ContentTypes").GetSection("ManagedColumns").GetChildren();
+                    foreach (var key in managedColumns)
+                    {
+                        managedProperties.Add(searchSettings.ManagedPropertyExtension + key.Value.Replace("LPC", ""));
+                    }
                     keywordQuery = AssignKeywordQueryValues(keywordQuery, managedProperties);
-                        
                     searchResponseVM = FillResultData(clientContext, keywordQuery, searchRequestVM, false, managedProperties);
                     clientContext.Dispose();
-                }               
+                }
             }
             catch (Exception ex)
             {
@@ -244,7 +250,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
         /// <param name="listColumnName"></param>
         /// <param name="isShowDocument"></param>
         /// <returns></returns>
-        public SearchResponseVM GetPinnedData(Client client, string listName, string listColumnName, bool isShowDocument)
+        public SearchResponseVM GetPinnedData(SearchRequestVM searchRequestVM, string listName, string listColumnName, bool isShowDocument)
         {
             ////Holds logged-in user alias
             string userAlias = string.Empty;
@@ -254,7 +260,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
             string userPinnedDetails = string.Empty;
 
             SearchResponseVM searchResponse = new SearchResponseVM();
-            using (clientContext = spoAuthorization.GetClientContext(client.Url))
+            using (clientContext = spoAuthorization.GetClientContext(searchRequestVM.Client.Url))
             {
                 try
                 {
@@ -262,29 +268,93 @@ namespace Microsoft.Legal.MatterCenter.Repository
                     Users currentUserDetail = userDetails.GetLoggedInUserDetails(clientContext);
                     userAlias = currentUserDetail.LogOnName;
                     listItems = spList.GetData(clientContext, listName, string.Format(CultureInfo.InvariantCulture,
-                        camlQueries.UserPinnedDetailsQuery, searchSettings.PinnedListColumnUserAlias, userAlias, listColumnName));                    
-                    if (listItems!=null && listItems.Count > 0)
+                        camlQueries.UserPinnedDetailsQuery, searchSettings.PinnedListColumnUserAlias, userAlias, listColumnName));
+                    if (listItems != null && listItems.Count > 0)
                     {
                         ////Since we are maintaining only single list item per user, listItems collection will have only one object; hence accessing first object
                         ////Check if column holds null or empty string. If non empty, pinned matter/document exists
                         if (!string.IsNullOrEmpty(Convert.ToString(listItems[0][listColumnName], CultureInfo.InvariantCulture)))
                         {
                             string userPinnedMatter = Convert.ToString(listItems[0][listColumnName], CultureInfo.InvariantCulture);
+                            var sortCol = searchRequestVM.SearchObject.Sort.ByColumn;
+                            sortCol = UppercaseFirst(sortCol);
+
                             if (isShowDocument)
                             {
-                                Dictionary<string, DocumentData> userpinnedDocumentCollection = 
+                                Dictionary<string, DocumentData> userpinnedDocumentCollection =
                                     JsonConvert.DeserializeObject<Dictionary<string, DocumentData>>(userPinnedMatter);
                                 searchResponse.TotalRows = userpinnedDocumentCollection.Count;
-                                searchResponse.DocumentDataList = userpinnedDocumentCollection.Values.Reverse();                                
+                                //searchResponse.DocumentDataList = userpinnedDocumentCollection.Values.Reverse();
+                                if (searchRequestVM.SearchObject.Sort.Direction == 0)
+                                {
+                                    if (sortCol != "" && (sortCol.ToLower().Trim() == searchSettings.ManagedPropertyDocumentLastModifiedTime || sortCol.ToLower().Trim() == searchSettings.ManagedPropertyCreated.ToLower().Trim()))
+                                    {
+                                        searchResponse.DocumentDataList = userpinnedDocumentCollection.Values.OrderBy(x => DateTime.ParseExact(TypeHelper.GetPropertyValue(x, sortCol).ToString(), "M/d/yyyy h:mm:ss tt", null));
+                                    }
+                                    else if (sortCol != "" && (sortCol.ToLower().Trim() != searchSettings.ManagedPropertyDocumentLastModifiedTime || sortCol.ToLower().Trim() != searchSettings.ManagedPropertyCreated.ToLower().Trim()))
+                                    {
+                                        searchResponse.DocumentDataList = userpinnedDocumentCollection.Values.OrderBy(x => TypeHelper.GetPropertyValue(x, sortCol));
+                                    }
+                                    else
+                                    {
+                                        searchResponse.DocumentDataList = userpinnedDocumentCollection.Values;
+                                    }
+                                }
+                                else
+                                {
+                                    if (sortCol != "" && (sortCol.ToLower().Trim() == searchSettings.ManagedPropertyDocumentLastModifiedTime || sortCol.ToLower().Trim() == searchSettings.ManagedPropertyCreated.ToLower().Trim()))
+                                    {
+                                        searchResponse.DocumentDataList = userpinnedDocumentCollection.Values.OrderByDescending(x => DateTime.ParseExact(TypeHelper.GetPropertyValue(x, sortCol).ToString(), "M/d/yyyy h:mm:ss tt", null));
+                                    }
+                                    else if (sortCol != "" && (sortCol.ToLower().Trim() != searchSettings.ManagedPropertyDocumentLastModifiedTime || sortCol.ToLower().Trim() != searchSettings.ManagedPropertyCreated.ToLower().Trim()))
+                                    {
+                                        searchResponse.DocumentDataList = userpinnedDocumentCollection.Values.OrderByDescending(x => TypeHelper.GetPropertyValue(x, sortCol));
+                                    }
+                                    else
+                                    {
+                                        searchResponse.DocumentDataList = userpinnedDocumentCollection.Values;
+                                    }
+                                }
                             }
                             else
                             {
-                                Dictionary<string, MatterData> userpinnedMatterCollection = 
+                                Dictionary<string, MatterData> userpinnedMatterCollection =
                                     JsonConvert.DeserializeObject<Dictionary<string, MatterData>>(userPinnedMatter);
                                 searchResponse.TotalRows = userpinnedMatterCollection.Count;
-                                searchResponse.MatterDataList = userpinnedMatterCollection.Values.Reverse();                                
-                            }                            
-                        }                        
+                                // searchResponse.MatterDataList = userpinnedMatterCollection.Values.Reverse();
+                                if (searchRequestVM.SearchObject.Sort.Direction == 0)
+                                {
+                                    if (sortCol != "" && (sortCol.ToLower().Trim() == searchSettings.ManagedPropertyLastModifiedTime || sortCol.ToLower().Trim() == searchSettings.ManagedPropertyOpenDate.ToLower().Trim()))
+                                    {
+                                        searchResponse.MatterDataList = userpinnedMatterCollection.Values.OrderBy(x => DateTime.Parse(TypeHelper.GetPropertyValue(x, sortCol).ToString()));
+                                    }
+                                    else if(sortCol!="" && (sortCol.ToLower().Trim() != searchSettings.ManagedPropertyLastModifiedTime || sortCol.ToLower().Trim() != searchSettings.ManagedPropertyOpenDate.ToLower().Trim()))
+                                    {
+                                        searchResponse.MatterDataList = userpinnedMatterCollection.Values.OrderBy(x => TypeHelper.GetPropertyValue(x, sortCol));
+                                    }
+                                    else
+                                    {
+                                        searchResponse.MatterDataList = userpinnedMatterCollection.Values;
+                                    }
+                                }
+                                else
+                                {
+                                    if (sortCol != "" && (sortCol.ToLower().Trim() == searchSettings.ManagedPropertyLastModifiedTime || sortCol.ToLower().Trim() == searchSettings.ManagedPropertyOpenDate.ToLower().Trim()))
+                                    {                                                         
+                                        searchResponse.MatterDataList = userpinnedMatterCollection.Values.OrderByDescending(x => DateTime.Parse(TypeHelper.GetPropertyValue(x, sortCol).ToString()));
+                                    }
+                                    else if (sortCol != "" && (sortCol.ToLower().Trim() != searchSettings.ManagedPropertyLastModifiedTime || sortCol.ToLower().Trim() != searchSettings.ManagedPropertyOpenDate.ToLower().Trim()))
+                                    {
+                                        searchResponse.MatterDataList = userpinnedMatterCollection.Values.OrderByDescending(x => TypeHelper.GetPropertyValue(x, sortCol));
+                                    }
+                                    else
+                                    {
+                                        searchResponse.MatterDataList = userpinnedMatterCollection.Values;
+                                    }
+                                }
+                            }
+                        }
+
                     }
                     else
                     {
@@ -315,7 +385,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
             try
             {
                 clientContext = spoAuthorization.GetClientContext(pinRequestMatterVM.Client.Url);
-                return UnPinThisRecord(clientContext, pinRequestMatterVM.Client, pinRequestMatterVM.MatterData, true);                
+                return UnPinThisRecord(clientContext, pinRequestMatterVM.Client, pinRequestMatterVM.MatterData, true);
             }
             catch (Exception ex)
             {
@@ -330,7 +400,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
         /// <param name="pinRequestMatterVM"></param>
         /// <returns></returns>
         public bool PinMatter(PinRequestMatterVM pinRequestMatterVM)
-        {            
+        {
             try
             {
                 using (clientContext = spoAuthorization.GetClientContext(pinRequestMatterVM.Client.Url))
@@ -343,7 +413,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                 customLogger.LogError(exception, MethodBase.GetCurrentMethod().DeclaringType.Name, MethodBase.GetCurrentMethod().Name, logTables.SPOLogTable);
                 throw;
             }
-            
+
         }
 
         /// <summary>
@@ -528,19 +598,19 @@ namespace Microsoft.Legal.MatterCenter.Repository
                     clientContext.Load(web.RoleDefinitions, roledefinitions => roledefinitions.Include(thisRole => thisRole.Name, thisRole => thisRole.Id));
                     clientContext.ExecuteQuery();
                     string userAllowedPermissions = searchSettings.UserPermissions;
-                
-                        List<RoleDefinition> roleDefinition = new List<RoleDefinition>();
-                        if (!String.IsNullOrWhiteSpace(userAllowedPermissions))
-                        {
-                            //// Get the user permissions from the Resource file
-                            List<string> userPermissions = userAllowedPermissions.ToUpperInvariant().Trim().Split(new string[] { ServiceConstants.COMMA }, StringSplitOptions.RemoveEmptyEntries).ToList();
-                            //// Filter only the allowed roles using LINQ query
-                            roleDefinition = (from webRole in web.RoleDefinitions.ToList()
-                                                                   where userPermissions.Contains(webRole.Name.ToUpperInvariant())
-                                                                   select webRole).ToList();
-                        }
-                        return roleDefinition;
-                
+
+                    List<RoleDefinition> roleDefinition = new List<RoleDefinition>();
+                    if (!String.IsNullOrWhiteSpace(userAllowedPermissions))
+                    {
+                        //// Get the user permissions from the Resource file
+                        List<string> userPermissions = userAllowedPermissions.ToUpperInvariant().Trim().Split(new string[] { ServiceConstants.COMMA }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                        //// Filter only the allowed roles using LINQ query
+                        roleDefinition = (from webRole in web.RoleDefinitions.ToList()
+                                          where userPermissions.Contains(webRole.Name.ToUpperInvariant())
+                                          select webRole).ToList();
+                    }
+                    return roleDefinition;
+
                 }
             }
             catch (Exception exception)
@@ -563,7 +633,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
             {
                 using (ClientContext clientContext = spoAuthorization.GetClientContext(client.Url))
                 {
-                    
+
                     ClientPeoplePickerQueryParameters queryParams = new ClientPeoplePickerQueryParameters();
                     queryParams.AllowMultipleEntities = searchSettings.PeoplePickerAllowMultipleEntities;
                     queryParams.MaximumEntitySuggestions = searchSettings.PeoplePickerMaximumEntitySuggestions;
@@ -624,9 +694,9 @@ namespace Microsoft.Legal.MatterCenter.Repository
                         genericResponse.IsError = true;
                         return genericResponse;
                     }
-                    
+
                 }
-               
+
             }
             catch (Exception exception)
             {
@@ -635,8 +705,31 @@ namespace Microsoft.Legal.MatterCenter.Repository
             }
         }
         #endregion
+        public static class TypeHelper
+        {
+            public static object GetPropertyValue(object obj, string name)
+            {
+                return obj == null ? null : obj.GetType()
+                                               .GetProperty(name)
+                                               .GetValue(obj, null);
+            }
+        }
 
         #region Private Methods
+
+
+
+        private static string UppercaseFirst(string s)
+        {
+            // Check for empty string.
+            if (string.IsNullOrEmpty(s))
+            {
+                return string.Empty;
+            }
+            // Return char and concat substring.
+            return char.ToUpper(s[0]) + s.Substring(1);
+        }
+
         /// <summary>
         /// Pins the record and associate to logged-in user.
         /// </summary>
@@ -647,8 +740,8 @@ namespace Microsoft.Legal.MatterCenter.Repository
         internal bool PinThisRecord(ClientContext clientContext, Client client, object getUserPinnedDetails, bool isMatterView)
         {
             bool status = false;
-            if (clientContext!=null)
-            {               
+            if (clientContext != null)
+            {
                 string userAlias = string.Empty;
                 string pinnedDetailsJson = string.Empty;
                 ListItemCollection listItems;
@@ -658,7 +751,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                     List list = clientContext.Web.Lists.GetByTitle(userPinnedDetails.ListName);
                     Users currentUserDetail = userDetails.GetLoggedInUserDetails(clientContext);
                     userAlias = currentUserDetail.LogOnName;
-                    listItems = spList.GetData(clientContext, userPinnedDetails.ListName, string.Format(CultureInfo.InvariantCulture, 
+                    listItems = spList.GetData(clientContext, userPinnedDetails.ListName, string.Format(CultureInfo.InvariantCulture,
                         camlQueries.UserPinnedDetailsQuery,
                         searchSettings.PinnedListColumnUserAlias, userAlias, userPinnedDetails.PinnedListColumnDetails));
                     ////Pinned matter/document(s) exists for users
@@ -667,8 +760,8 @@ namespace Microsoft.Legal.MatterCenter.Repository
                         ////Logic to create pinned matter/document
                         if (isMatterView)
                         {
-                            string userPinnedMatter = !string.IsNullOrEmpty(Convert.ToString(listItems[0][searchSettings.PinnedListColumnMatterDetails], 
-                                CultureInfo.InvariantCulture)) ? Convert.ToString(listItems[0][searchSettings.PinnedListColumnMatterDetails], 
+                            string userPinnedMatter = !string.IsNullOrEmpty(Convert.ToString(listItems[0][searchSettings.PinnedListColumnMatterDetails],
+                                CultureInfo.InvariantCulture)) ? Convert.ToString(listItems[0][searchSettings.PinnedListColumnMatterDetails],
                                 CultureInfo.InvariantCulture) : string.Empty;
                             // Check if empty entry is retrieved
                             if (!string.IsNullOrWhiteSpace(userPinnedMatter))
@@ -692,7 +785,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                         }
                         else
                         {
-                            string userPinnedDocument = !string.IsNullOrEmpty(Convert.ToString(listItems[0][searchSettings.PinnedListColumnDocumentDetails], 
+                            string userPinnedDocument = !string.IsNullOrEmpty(Convert.ToString(listItems[0][searchSettings.PinnedListColumnDocumentDetails],
                                 CultureInfo.InvariantCulture)) ? Convert.ToString(listItems[0][searchSettings.PinnedListColumnDocumentDetails], CultureInfo.InvariantCulture) : string.Empty;
                             if (!string.IsNullOrWhiteSpace(userPinnedDocument))
                             {
@@ -754,7 +847,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                     customLogger.LogError(exception, MethodBase.GetCurrentMethod().DeclaringType.Name, MethodBase.GetCurrentMethod().Name, logTables.SPOLogTable);
                     throw;
                 }
-            }            
+            }
             return status;
         }
 
@@ -811,7 +904,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
         {
             bool status = false;
             if (null != clientContext)
-            {                
+            {
                 string userAlias = string.Empty;
                 ListItemCollection listItems;
                 PinUnpinDetails userPinnedDetails = GetCurrentUserPinnedDetails(isMatterView, getUserPinnedDetails);
@@ -819,8 +912,8 @@ namespace Microsoft.Legal.MatterCenter.Repository
                 {
                     Users currentUserDetail = userDetails.GetLoggedInUserDetails(clientContext);
                     userAlias = currentUserDetail.LogOnName;
-                    listItems = spList.GetData(clientContext, userPinnedDetails.ListName, string.Format(CultureInfo.InvariantCulture, 
-                        camlQueries.UserPinnedDetailsQuery, searchSettings.PinnedListColumnUserAlias, 
+                    listItems = spList.GetData(clientContext, userPinnedDetails.ListName, string.Format(CultureInfo.InvariantCulture,
+                        camlQueries.UserPinnedDetailsQuery, searchSettings.PinnedListColumnUserAlias,
                         userAlias, userPinnedDetails.PinnedListColumnDetails));
 
                     ////Pinned matter/document(s) exists for users
@@ -829,13 +922,17 @@ namespace Microsoft.Legal.MatterCenter.Repository
                         ////Logic to create pinned matter/document
                         if (isMatterView)
                         {
-                            string userPinnedMatter = 
-                                !string.IsNullOrEmpty(Convert.ToString(listItems[0][userPinnedDetails.PinnedListColumnDetails], CultureInfo.InvariantCulture)) ? 
+                            string userPinnedMatter =
+                                !string.IsNullOrEmpty(Convert.ToString(listItems[0][userPinnedDetails.PinnedListColumnDetails], CultureInfo.InvariantCulture)) ?
                                 Convert.ToString(listItems[0][userPinnedDetails.PinnedListColumnDetails], CultureInfo.InvariantCulture) : string.Empty;
                             Dictionary<string, MatterData> userpinnedMatterCollection = JsonConvert.DeserializeObject<Dictionary<string, MatterData>>(userPinnedMatter);
 
-                            if (!string.IsNullOrWhiteSpace(userPinnedDetails.UserPinnedMatterData.MatterName) && 
-                                userpinnedMatterCollection.ContainsKey(userPinnedDetails.UserPinnedMatterData.MatterName))
+                            if (!string.IsNullOrWhiteSpace(userPinnedDetails.UserPinnedMatterData.MatterName) &&
+                                userpinnedMatterCollection.Where(x => x.Key.ToLower() == WebUtility.HtmlEncode(userPinnedDetails.UserPinnedMatterData.MatterName.Trim().ToLower())).ToList().Count > 0
+                                ||
+                                !string.IsNullOrWhiteSpace(userPinnedDetails.UserPinnedMatterData.MatterName) &&
+                                userpinnedMatterCollection.Where(x => x.Key.ToLower() == userPinnedDetails.UserPinnedMatterData.MatterName.Trim().ToLower()).ToList().Count > 0
+                                )
                             {
                                 ////Only 1 pinned request for user
                                 if (1 == userpinnedMatterCollection.Count)
@@ -856,12 +953,14 @@ namespace Microsoft.Legal.MatterCenter.Repository
                         }
                         else
                         {
-                            string userPinnedDocument = !string.IsNullOrEmpty(Convert.ToString(listItems[0][userPinnedDetails.PinnedListColumnDetails], 
-                                CultureInfo.InvariantCulture)) ? Convert.ToString(listItems[0][userPinnedDetails.PinnedListColumnDetails], 
+                            string userPinnedDocument = !string.IsNullOrEmpty(Convert.ToString(listItems[0][userPinnedDetails.PinnedListColumnDetails],
+                                CultureInfo.InvariantCulture)) ? Convert.ToString(listItems[0][userPinnedDetails.PinnedListColumnDetails],
                                 CultureInfo.InvariantCulture) : string.Empty;
-                            Dictionary<string, DocumentData> userpinnedDocumentCollection = 
-                                JsonConvert.DeserializeObject<Dictionary<string, DocumentData>>(userPinnedDocument);
-                            if (!string.IsNullOrWhiteSpace(userPinnedDetails.URL) && userpinnedDocumentCollection.ContainsKey(userPinnedDetails.URL))
+                            Dictionary<string, DocumentData> userpinnedDocumentCollection = new Dictionary<string, DocumentData>(StringComparer.InvariantCultureIgnoreCase);
+                            userpinnedDocumentCollection = JsonConvert.DeserializeObject<Dictionary<string, DocumentData>>(userPinnedDocument);
+                            if (!string.IsNullOrWhiteSpace(userPinnedDetails.URL) && userpinnedDocumentCollection.Where(x => x.Key.ToLower() == WebUtility.HtmlEncode(userPinnedDetails.URL.Trim().ToLower())).ToList().Count > 0
+                                    || !string.IsNullOrWhiteSpace(userPinnedDetails.URL) && userpinnedDocumentCollection.Where(x => x.Key.ToLower() == userPinnedDetails.URL.Trim().ToLower()).ToList().Count>0
+                                )
                             {
                                 ////Only 1 pinned request for user
                                 if (1 == userpinnedDocumentCollection.Count)
@@ -881,7 +980,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                                 }
                             }
                         }
-                        
+
                         clientContext.ExecuteQuery();
                         status = true;
                     }
@@ -893,7 +992,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                     throw;
                 }
             }
-            return status;            
+            return status;
         }
 
         /// <summary>
@@ -925,7 +1024,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
             {
                 customLogger.LogError(exception, MethodBase.GetCurrentMethod().DeclaringType.Name, MethodBase.GetCurrentMethod().Name, logTables.SPOLogTable);
                 throw;
-            }            
+            }
         }
 
 
@@ -938,7 +1037,8 @@ namespace Microsoft.Legal.MatterCenter.Repository
         private KeywordQuery FilterMatters(SearchObject searchObject, KeywordQuery keywordQuery)
         {
             string filterValues = string.Empty;
-            try {
+            try
+            {
                 if (null != searchObject && null != keywordQuery)
                 {
                     if (null != searchObject.Filters)
@@ -1010,6 +1110,11 @@ namespace Microsoft.Legal.MatterCenter.Repository
                             keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertyFileName, ServiceConstants.COLON,
                                 ServiceConstants.DOUBLE_QUOTE, searchObject.Filters.Name, ServiceConstants.DOUBLE_QUOTE));
                         }
+                        if (!string.IsNullOrWhiteSpace(searchObject.Filters.ProjectName))
+                        {
+                            keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertyMatterName, ServiceConstants.COLON,
+                                ServiceConstants.DOUBLE_QUOTE, searchObject.Filters.ProjectName, ServiceConstants.DOUBLE_QUOTE));
+                        }
 
                         if (!string.IsNullOrWhiteSpace(searchObject.Filters.ClientName))
                         {
@@ -1021,6 +1126,11 @@ namespace Microsoft.Legal.MatterCenter.Repository
                         {
                             keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertyDocumentCheckOutUser, ServiceConstants.COLON,
                                 ServiceConstants.DOUBLE_QUOTE, searchObject.Filters.DocumentCheckoutUsers, ServiceConstants.DOUBLE_QUOTE));
+                        }
+                        if (!string.IsNullOrWhiteSpace(searchObject.Filters.PracticeGroup))
+                        {
+                            keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertyPracticeGroup, ServiceConstants.COLON,
+                                ServiceConstants.DOUBLE_QUOTE, searchObject.Filters.PracticeGroup, ServiceConstants.DOUBLE_QUOTE));
                         }
                     }
                     keywordQuery = FilterCommonDetails(searchObject, keywordQuery, false);
@@ -1054,7 +1164,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                     }
                     else
                     {
-                        previousFilterValues = string.Concat(propertyName, ServiceConstants.COLON, ServiceConstants.SPACE, 
+                        previousFilterValues = string.Concat(propertyName, ServiceConstants.COLON, ServiceConstants.SPACE,
                             ServiceConstants.OPENING_BRACKET, ServiceConstants.OPERATOR_OR, ServiceConstants.OPENING_BRACKET);
                     }
                     for (int counter = 0; counter < dataList.Count; counter++)
@@ -1146,18 +1256,31 @@ namespace Microsoft.Legal.MatterCenter.Repository
                         keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertyResponsibleAttorney, ServiceConstants.COLON,
                             ServiceConstants.DOUBLE_QUOTE, searchObject.Filters.ResponsibleAttorneys, ServiceConstants.DOUBLE_QUOTE));
                     }
-
-                    if (!string.IsNullOrWhiteSpace(searchObject.Filters.SubareaOfLaw))
+                    if (null != searchObject.Filters.PracticeGroup && !string.IsNullOrWhiteSpace(searchObject.Filters.PracticeGroup))
                     {
-                        keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertySubAreaOfLaw, ServiceConstants.COLON,
-                            ServiceConstants.DOUBLE_QUOTE, searchObject.Filters.SubareaOfLaw, ServiceConstants.DOUBLE_QUOTE));
+                        keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertyPracticeGroup, ServiceConstants.COLON, ServiceConstants.DOUBLE_INVERTED_COMMA, searchObject.Filters.PracticeGroup, ServiceConstants.DOUBLE_INVERTED_COMMA));
                     }
+                    if (!string.IsNullOrWhiteSpace(searchObject.Filters.AreaOfLaw))
+                    {
+                        keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertyAreaOfLaw, ServiceConstants.COLON, ServiceConstants.DOUBLE_INVERTED_COMMA, searchObject.Filters.AreaOfLaw, ServiceConstants.DOUBLE_INVERTED_COMMA));
+                    }
+
+                    if (null != searchObject.Filters.SubareaOfLaw && !string.IsNullOrWhiteSpace(searchObject.Filters.SubareaOfLaw))
+                    {
+                        keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertySubAreaOfLaw, ServiceConstants.COLON, ServiceConstants.DOUBLE_INVERTED_COMMA, searchObject.Filters.SubareaOfLaw, ServiceConstants.DOUBLE_INVERTED_COMMA));
+                    }
+                    if (null != searchObject.Filters.ProjectID && !string.IsNullOrWhiteSpace(searchObject.Filters.ProjectID))
+                    {
+                        keywordQuery.RefinementFilters.Add(string.Concat(searchSettings.ManagedPropertyMatterId, ServiceConstants.COLON, ServiceConstants.DOUBLE_INVERTED_COMMA, searchObject.Filters.ProjectID, ServiceConstants.DOUBLE_INVERTED_COMMA));
+                    }
+
                     if (null != searchObject.Filters.DateFilters)
                     {
                         ////// Add refiner for Open date value
                         keywordQuery = AddDateRefinementFilter(keywordQuery, searchObject.Filters.DateFilters.OpenDateFrom,
                             searchObject.Filters.DateFilters.OpenDateTo, searchSettings.ManagedPropertyOpenDate);
                     }
+
                 }
             }
             catch (Exception exception)
@@ -1218,7 +1341,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
         /// <param name="managedProperty">The managed property.</param>
         /// <param name="isMatterView">If the user is pinning a matter, this will be true, else will be false.</param>
         /// <returns>It returns a Keyword Query object.</returns>
-        private KeywordQuery KeywordQueryMetrics(Client client, SearchObject searchObject, KeywordQuery keywordQuery, 
+        private KeywordQuery KeywordQueryMetrics(Client client, SearchObject searchObject, KeywordQuery keywordQuery,
             string filterCondition, string managedProperty, bool isMatterView)
         {
             KeywordQuery result = null;
@@ -1236,7 +1359,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                 keywordQuery.RefinementFilters.Add(filterCondition);
                 if (isMatterView)
                 {
-                    keywordQuery.RefinementFilters.Add(string.Concat(managedProperty, ServiceConstants.COLON, 
+                    keywordQuery.RefinementFilters.Add(string.Concat(managedProperty, ServiceConstants.COLON,
                         ServiceConstants.DOUBLE_QUOTE, true, ServiceConstants.DOUBLE_QUOTE));
                 }
                 else
@@ -1247,7 +1370,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
 
                     foreach (string extension in invalidExtensions)
                     {
-                        chunk = chunk + "equals" + ServiceConstants.OPENING_BRACKET + ServiceConstants.DOUBLE_QUOTE + extension + 
+                        chunk = chunk + "equals" + ServiceConstants.OPENING_BRACKET + ServiceConstants.DOUBLE_QUOTE + extension +
                             ServiceConstants.DOUBLE_QUOTE + ServiceConstants.CLOSING_BRACKET + ServiceConstants.COMMA;
                     }
                     chunk = chunk.Remove(chunk.Length - 1);
@@ -1287,7 +1410,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
         {
             KeywordQuery result = null;
             try
-            {                
+            {
                 if (keywordQuery != null)
                 {
                     keywordQuery.SelectProperties.Clear();
@@ -1319,10 +1442,10 @@ namespace Microsoft.Legal.MatterCenter.Repository
         /// <param name="isMatterSearch">The flag to determine weather call is from Search Matter or Search Document.</param>
         /// <param name="managedProperties">List of managed properties</param>
         /// <returns>It returns a string object, that contains all the results combined with dollar pipe dollar separator.</returns>
-        private SearchResponseVM FillResultData(ClientContext clientContext, KeywordQuery keywordQuery, 
+        private SearchResponseVM FillResultData(ClientContext clientContext, KeywordQuery keywordQuery,
             SearchRequestVM searchRequestVM, Boolean isMatterSearch, List<string> managedProperties)
         {
-            SearchResponseVM searchResponseVM = new SearchResponseVM() ;
+            SearchResponseVM searchResponseVM = new SearchResponseVM();
             Boolean isReadOnly;
             try
             {
@@ -1337,10 +1460,10 @@ namespace Microsoft.Legal.MatterCenter.Repository
                 ClientResult<ResultTableCollection> resultsTableCollection = searchExecutor.ExecuteQuery(keywordQuery);
                 Users currentLoggedInUser = userDetails.GetLoggedInUserDetails(clientContext);
 
-                if (null != resultsTableCollection && null != resultsTableCollection.Value && 0 < 
+                if (null != resultsTableCollection && null != resultsTableCollection.Value && 0 <
                     resultsTableCollection.Value.Count && null != resultsTableCollection.Value[0].ResultRows)
                 {
-                    if (isMatterSearch && 0 < resultsTableCollection.Value.Count && 
+                    if (isMatterSearch && 0 < resultsTableCollection.Value.Count &&
                         null != resultsTableCollection.Value[0].ResultRows && !string.IsNullOrWhiteSpace(currentLoggedInUser.Email))
                     {
                         foreach (IDictionary<string, object> matterMetadata in resultsTableCollection.Value[0].ResultRows)
@@ -1353,7 +1476,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                                 string readOnlyUsers = Convert.ToString(matterMetadata[searchSettings.ManagedPropertyBlockedUploadUsers], CultureInfo.InvariantCulture);
                                 if (!string.IsNullOrWhiteSpace(readOnlyUsers))
                                 {
-                                    isReadOnly = IsUserReadOnlyForMatter(isReadOnly, currentLoggedInUser.Name, 
+                                    isReadOnly = IsUserReadOnlyForMatter(isReadOnly, currentLoggedInUser.Name,
                                         currentLoggedInUser.Email, readOnlyUsers);
                                 }
                                 matterMetadata.Add(generalSettings.IsReadOnlyUser, isReadOnly);
@@ -1376,19 +1499,19 @@ namespace Microsoft.Legal.MatterCenter.Repository
                             }
                         }
                     }
-                    if (resultsTableCollection.Value.Count>1)
-                    {                        
+                    if (resultsTableCollection.Value.Count > 1)
+                    {
                         searchResponseVM.TotalRows = resultsTableCollection.Value[0].TotalRows;
                         searchResponseVM.SearchResults = resultsTableCollection.Value[0].ResultRows;
                     }
                     else
                     {
-                        if (resultsTableCollection.Value[0].TotalRows==0)
+                        if (resultsTableCollection.Value[0].TotalRows == 0)
                         {
                             searchResponseVM = NoDataRow(managedProperties);
                         }
                         else
-                        {                            
+                        {
                             searchResponseVM.TotalRows = resultsTableCollection.Value[0].TotalRows;
                             searchResponseVM.SearchResults = resultsTableCollection.Value[0].ResultRows;
                         }
@@ -1424,7 +1547,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                 {
                     keywordQuery = AddSortingRefiner(keywordQuery, searchObject.Sort.ByProperty, searchObject.Sort.Direction);
                     //// Add Matter ID property as second level sort for Client.MatterID column based on Search Matter or Search Document
-                    if (searchSettings.ManagedPropertyClientID == searchObject.Sort.ByProperty || 
+                    if (searchSettings.ManagedPropertyClientID == searchObject.Sort.ByProperty ||
                         searchSettings.ManagedPropertyDocumentClientId == searchObject.Sort.ByProperty)
                     {
                         if (isMatterSearch)
@@ -1458,10 +1581,18 @@ namespace Microsoft.Legal.MatterCenter.Repository
             matterMetadata[searchSettings.ManagedPropertyTitle] = DecodeValues(matterMetadata[searchSettings.ManagedPropertyTitle]);
             matterMetadata[searchSettings.ManagedPropertySiteName] = DecodeValues(matterMetadata[searchSettings.ManagedPropertySiteName]);
             matterMetadata[searchSettings.ManagedPropertyDescription] = DecodeValues(matterMetadata[searchSettings.ManagedPropertyDescription]);
-            var managedColumns = configuration.GetSection("ContentTypes").GetSection("ManagedColumns").GetChildren();
+            var managedColumns = configuration.GetSection("ContentTypes").GetSection("ManagedColumns").GetChildren();            
             foreach (var key in managedColumns)
-            {
-                matterMetadata["MC" + key.Value] = DecodeValues(matterMetadata["MC" + key.Value]);
+            {                
+                if (key.Value.Contains("PracticeGroup"))
+                {
+                    string practiceGroupKey = key.Value.Replace("LPC", "");
+                    matterMetadata[searchSettings.ManagedPropertyExtension + practiceGroupKey] = DecodeValues(matterMetadata[searchSettings.ManagedPropertyExtension + practiceGroupKey]);
+                }
+                else
+                {
+                    matterMetadata[searchSettings.ManagedPropertyExtension + key.Value] = DecodeValues(matterMetadata[searchSettings.ManagedPropertyExtension + key.Value]);
+                }                                      
             }
             matterMetadata[searchSettings.ManagedPropertyCustomTitle] = DecodeValues(matterMetadata[searchSettings.ManagedPropertyCustomTitle]);
             matterMetadata[searchSettings.ManagedPropertyPath] = DecodeValues(matterMetadata[searchSettings.ManagedPropertyPath]);
@@ -1478,7 +1609,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
         /// </summary>
         /// <param name="value">Matter Properties object</param>
         /// <returns>Decoded String</returns>
-        private static string DecodeValues(object value) =>  null != value ? WebUtility.HtmlDecode(Convert.ToString(value, CultureInfo.InvariantCulture)) : string.Empty;
+        private static string DecodeValues(object value) => null != value ? WebUtility.HtmlDecode(Convert.ToString(value, CultureInfo.InvariantCulture)) : string.Empty;
 
 
         /// <summary>
@@ -1490,7 +1621,8 @@ namespace Microsoft.Legal.MatterCenter.Repository
         /// <returns>Flag indicating if user has read permission on matter</returns>
         private bool IsUserReadOnlyForMatter(Boolean isReadOnly, string currentLoggedInUser, string currentLoggedInUserEmail, string readOnlyUsers)
         {
-            try {
+            try
+            {
                 List<string> readOnlyUsersList = readOnlyUsers.Trim().Split(new string[] { ServiceConstants.SEMICOLON }, StringSplitOptions.RemoveEmptyEntries).ToList();
                 List<string> currentReadOnlyUser = (from readOnlyUser in readOnlyUsersList
                                                     where string.Equals(readOnlyUser.Trim(), currentLoggedInUser.Trim(), StringComparison.OrdinalIgnoreCase) ||
@@ -1537,8 +1669,9 @@ namespace Microsoft.Legal.MatterCenter.Repository
         private SearchResponseVM NoDataRow(List<string> managedProperties)
         {
             SearchResponseVM searchResponseVM = new SearchResponseVM();
-            try {
-                List<Dictionary<string, object>> noDataList = new List<Dictionary<string, object>>();               
+            try
+            {
+                List<Dictionary<string, object>> noDataList = new List<Dictionary<string, object>>();
                 Dictionary<string, object> noDataObject = new Dictionary<string, object>();
                 managedProperties.Add(ServiceConstants.PATH_FIELD_NAME);
                 foreach (string managedProperty in managedProperties)
@@ -1564,7 +1697,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
             return searchResponseVM;
         }
 
-        
+
         #endregion
     }
 }

@@ -427,7 +427,11 @@ namespace Microsoft.Legal.MatterCenter.Web
                     jw.WriteValue(generalSettingsSection["CentralRepositoryUrl"]);
                     jw.WritePropertyName("isDevMode");
                     jw.WriteValue(bool.Parse(generalSettingsSection["IsDevMode"]));
-                jw.WriteEndObject();
+                    jw.WritePropertyName("isBackwardCompatible");
+                    jw.WriteValue(bool.Parse(generalSettingsSection["IsBackwardCompatible"]));
+                    jw.WritePropertyName("isClientMappedWithHierachy");
+                    jw.WriteValue(bool.Parse(generalSettingsSection["isClientMappedWithHierachy"]));
+            jw.WriteEndObject();
 
             jw.WritePropertyName("matter");
                 jw.WriteStartObject();
@@ -446,6 +450,22 @@ namespace Microsoft.Legal.MatterCenter.Web
                 jw.WriteStartObject();
                     jw.WritePropertyName("levels");
                     jw.WriteValue(taxonomySettingsSection["Levels"]);
+                    jw.WritePropertyName("practiceGroupTermSetName");
+                    jw.WriteValue(taxonomySettingsSection["PracticeGroupTermSetName"]);
+                    jw.WritePropertyName("termGroup");
+                    jw.WriteValue(taxonomySettingsSection["TermGroup"]);
+                    jw.WritePropertyName("clientTermSetName");
+                    jw.WriteValue(taxonomySettingsSection["ClientTermSetName"]);
+                    jw.WritePropertyName("clientCustomPropertiesURL");
+                    jw.WriteValue(taxonomySettingsSection["ClientCustomPropertiesURL"]);
+                    jw.WritePropertyName("clientCustomPropertiesId");
+                    jw.WriteValue(taxonomySettingsSection["ClientCustomPropertiesId"]);
+
+                    jw.WritePropertyName("subAreaOfLawCustomContentTypeProperty");
+                    jw.WriteValue(taxonomySettingsSection["SubAreaOfLawContentTypeTemplates"]);
+                    jw.WritePropertyName("subAreaOfLawDocumentContentTypeProperty");
+                    jw.WriteValue(taxonomySettingsSection["SubAreaOfLawDocumentTemplates"]);
+
                 jw.WriteEndObject();
 
             jw.WritePropertyName("search");
@@ -479,7 +499,19 @@ namespace Microsoft.Legal.MatterCenter.Web
                                             else if (subKey.Key == "position")
                                             {
                                                 jw.WriteValue(int.Parse(subKey.Value));
-                                            }                                                                                     
+                                            }  
+                                            else if (subKey.Key == "defaultVisibleInGrid")
+                                            {
+                                                jw.WriteValue(bool.Parse(subKey.Value));
+                                            }
+                                            else if (subKey.Key == "displayInFlyOut")
+                                            {
+                                                jw.WriteValue(bool.Parse(subKey.Value));
+                                            }
+                                            else if (subKey.Key == "displayInDashboard")
+                                            {
+                                                jw.WriteValue(bool.Parse(subKey.Value));
+                                            }
                                         }
                                     jw.WriteEndObject();
                             }
@@ -495,15 +527,27 @@ namespace Microsoft.Legal.MatterCenter.Web
                                     foreach (var subKey in Configuration.GetSection("Search").GetSection("SearchColumnsUIPickerForDocument").GetSection(key.Key).GetChildren())
                                     {
                                         jw.WritePropertyName(subKey.Key);
-                                        if (subKey.Key == "displayInUI")
+                                        var propVal = subKey.Value.Trim();
+                                        var propKey = subKey.Key.Trim();
+
+                                        switch (propKey)
                                         {
-                                            jw.WriteValue(bool.Parse(subKey.Value));
+                                            case "displayInUI":
+                                            case "defaultVisibleInGrid":
+                                            case "displayInFlyOut":
+                                            case "enableHiding":
+                                            case "enableColumnMenu":
+                                            case "displayInDashboard":
+                                            case "suppressRemoveSort":
+                                                jw.WriteValue(bool.Parse(propVal));
+                                                break;
+                                            case "position":
+                                                jw.WriteValue(int.Parse(propVal));
+                                                break;
+                                            default:
+                                                jw.WriteValue(propVal);
+                                                break;
                                         }
-                                        else if (subKey.Key == "position")
-                                        {
-                                            jw.WriteValue(int.Parse(subKey.Value));
-                                        }
-                                        
                                     }
                                 jw.WriteEndObject();
                             }

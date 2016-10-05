@@ -18,6 +18,7 @@
             vm.header = uiconfigs.Header;
             
             $rootScope.setAuthenticatedUserContext();
+            $rootScope.displayOverflow = "";
 
             //Callback function for help 
             function getHelp(options, callback) {
@@ -57,6 +58,7 @@
             $rootScope.dispinner = true;
             $rootScope.contextualhelp = false;
             $rootScope.dispcontextualhelpinner = true;
+            $rootScope.dispcontextualhelpinnerF1 = true;
             $rootScope.dispPersonal = function ($event) {
                 $event.stopPropagation();
                 $rootScope.contextualhelp = false;
@@ -69,9 +71,36 @@
                     $rootScope.dispinner = true;
                 }
             }
+
+            angular.element(document).ready(function () {
+                $(document).on("keydown", openContextualHelpFlyout);
+            });
+
+            //This function will invoke if the user presses  F1 key or esc
+            //If the user presses F1 key, show the help and if the user presses esc key, hide the
+            //help pop up
+            function openContextualHelpFlyout(e) {
+                "use strict";
+                // if key pressed is F1 then display the popup
+                if (112 === e.keyCode) {
+                    $rootScope.contextualhelp = true;
+                    vm.help('');
+                    $rootScope.dispcontextualhelpinnerF1 = false;
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                //If the user presses esc key, hide the help pop up
+                if (27 === e.keyCode) {                    
+                    $rootScope.contextualhelp = false;
+                    $rootScope.dispcontextualhelpinnerF1 = true;
+                    
+                }
+            };
+
             //#endregion
 
             //#region for displaying contextual help 
+            //This event is going to fire when the user clicks on the help icon using the mouse
             $rootScope.dispContextualHelp = function ($event) {
 
                 $rootScope.displayinfo = false;
@@ -145,6 +174,21 @@
 
             //#region navigating to the url based on menu click
             vm.navigateUrl = function (data) {
+
+                var windowLocation = $window.location.href;
+
+                if (windowLocation != '' && typeof windowLocation != 'undefined')
+                {
+                    if ("section=2" == data && windowLocation.substring(windowLocation.indexOf("#") + 2, windowLocation.length) == 'documentdashboard')
+                    {
+                        return false;
+                    } else if ("section=1" == data && windowLocation.substring(windowLocation.indexOf("#") + 2, windowLocation.length) == 'matterdashboard') {
+                        return false;
+                    } else if ("settings" == data && windowLocation.substring(windowLocation.indexOf("#") + 2, windowLocation.length) == 'settings') {
+                        return false;
+                    }
+                }
+
                 if (data != "Settings") {
                     $window.top.parent.location.href = configs.uri.SPOsiteURL + "/SitePages/MatterCenterHome.aspx?" + data;
                 } else {
@@ -167,6 +211,8 @@
             var date = new Date();
             vm.currentyear = date.getFullYear();
             //#endregion
+
+            
 
             vm.menuClick = function () {
                 var oAppMenuFlyout = $(".AppMenuFlyout");
@@ -214,4 +260,7 @@
             }
         }
     });
+
+    
+
 })();

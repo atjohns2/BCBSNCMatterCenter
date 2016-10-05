@@ -20,10 +20,13 @@ namespace Microsoft.Legal.MatterCenter.Utility
         /// <summary>
         /// Base64 string format for the image
         /// </summary>
+        public const string IS_FOLDER_STRUCTURE_PRESENT_FALSE = "FALSE";
+        public const string IS_FOLDER_STRUCTURE_PRESENT_TRUE = "TRUE";
         public const string BASE64_IMAGE_FORMAT = "data:image/png;base64, "; //ends with a space
         public const int Matter_ONE_NOTE_LENGTH = 120;
         public const string CLIENT_TERM_PATH = "/";
         public const string CACHE_PERMISSIONS = "Permissions";
+        public const string DOUBLE_INVERTED_COMMA = "\"";
 
         public const string SUCCESS = "200";
         /// <summary>

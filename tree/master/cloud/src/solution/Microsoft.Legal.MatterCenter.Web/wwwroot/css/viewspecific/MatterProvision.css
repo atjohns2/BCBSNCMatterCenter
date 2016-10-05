@@ -1,7 +1,7 @@
 ﻿body {
     height: 100%;
     margin: 0;
-    min-height: 430px;
+    min-height: 637px;
     padding: 0;
     position: absolute;
     width: 100%;
@@ -1368,6 +1368,7 @@ _::-moz-svg-foreign-content, :root .ddlRoleAssignList, :root .ddlPermAssignList 
 
     .sectionStep {
         max-width: 327px;
+         min-width:290px
     }
 
     .ddlRoleAssignList {

@@ -172,9 +172,9 @@ namespace Microsoft.Legal.MatterCenter.Web.Common
             return searchResultsVM.TotalRows;
         }
 
-        public async Task<int> GetPinnedCounts(Client client)
+        public async Task<int> GetPinnedCounts(SearchRequestVM searchRequestVM)
         {
-            var pinResponseVM = await matterRepositoy.GetPinnedRecordsAsync(client);
+            var pinResponseVM = await matterRepositoy.GetPinnedRecordsAsync(searchRequestVM);
             return pinResponseVM.TotalRows;
         }
 
@@ -245,29 +245,29 @@ namespace Microsoft.Legal.MatterCenter.Web.Common
                         {
                             ServiceUtility.AddProperty(matterData,
                                 configuration.GetSection("Search").GetSection("SearchColumnsUIPickerForMatter").GetSection("matterPracticeGroup").Key,
-                                searchResult[key].ToString());
+                                searchResult[key].ToString().Trim().TrimEnd(';'));
                         }
 
                         if (key.ToString().ToLower() == searchSettings.ManagedPropertyAreaOfLaw.ToLower())
                         {
                             ServiceUtility.AddProperty(matterData,
                                 configuration.GetSection("Search").GetSection("SearchColumnsUIPickerForMatter").GetSection("matterAreaOfLaw").Key,
-                                searchResult[key].ToString());
+                                searchResult[key].ToString().Trim().TrimEnd(';'));
                         }
 
                         #region Subarea of law login
                         if (key.ToString().ToLower() == searchSettings.ManagedPropertySubAreaOfLaw2.ToLower())
                         {
-                            subAreaOfLaw2 = searchResult[key].ToString();
+                            subAreaOfLaw2 = searchResult[key].ToString().Trim().TrimEnd(';');
                         }
                         if (key.ToString().ToLower() == searchSettings.ManagedPropertySubAreaOfLaw1.ToLower())
                         {
-                            subAreaOfLaw1 = searchResult[key].ToString();
+                            subAreaOfLaw1 = searchResult[key].ToString().Trim().TrimEnd(';');
                         }
 
                         if (key.ToString().ToLower() == searchSettings.ManagedPropertySubAreaOfLaw.ToLower())
                         {
-                            subAreaOfLaw = searchResult[key].ToString();
+                            subAreaOfLaw = searchResult[key].ToString().Trim().TrimEnd(';');
                         }
 
                         if (subAreaOfLaw2 != string.Empty && subAreaOfLaw1 != string.Empty && subAreaOfLaw != string.Empty)
@@ -341,7 +341,147 @@ namespace Microsoft.Legal.MatterCenter.Web.Common
                 searchResultsVM.MatterDataList = matterDataList;
             }
             searchResultsVM.SearchResults = null;
+            if (searchRequestVM.SearchObject.IsUnique && searchResultsVM.MatterDataList != null && !string.IsNullOrWhiteSpace(searchRequestVM.SearchObject.UniqueColumnName))
+            {
+                searchResultsVM.MatterDataList = getUniqueResults(searchRequestVM, searchResultsVM);
+            }
             return searchResultsVM;
+        }
+
+
+        /// <summary>
+        /// getting unique results for this.
+        /// </summary>
+        /// <param name="searchRequestVM"></param>
+        /// <param name="searchResultsVM"></param>
+        /// <returns></returns>
+        public dynamic getUniqueResults(SearchRequestVM searchRequestVM, dynamic searchResultsVM)
+        {
+            dynamic matterDataList1 = new List<dynamic>();
+            var colList = configuration.GetSection("Search").GetSection("SearchColumnsUIPickerForMatter");
+            string UniqueColumnName = getuniqueColumnName(searchRequestVM.SearchObject.UniqueColumnName.ToLower().Trim());
+
+            if (!string.IsNullOrWhiteSpace(UniqueColumnName)) 
+            {
+                if (UniqueColumnName.Equals(colList.GetSection("matterName").Key))
+                {
+                    var data = ((IEnumerable<dynamic>)searchResultsVM.MatterDataList).Where(d => d.matterName.Contains(searchRequestVM.SearchObject.FilterValue));
+                    data = data.Select(o => o.matterName).Distinct();
+                    foreach (var dt in data)
+                    {
+                        dynamic matterData1 = new ExpandoObject();
+                        matterData1.matterName = dt;
+                        matterDataList1.Add(matterData1);
+                    }
+                    searchResultsVM.MatterDataList = matterDataList1;
+                }
+                else if (UniqueColumnName.Equals(colList.GetSection("matterClient").Key))
+                {
+                    var data = ((IEnumerable<dynamic>)searchResultsVM.MatterDataList).Where(d => d.matterClient.Contains(searchRequestVM.SearchObject.FilterValue));
+                    data = data.Select(o => o.matterClient).Distinct();
+                    foreach (var dt in data)
+                    {
+                        dynamic matterData1 = new ExpandoObject();
+                        matterData1.matterClient = dt;
+                        matterDataList1.Add(matterData1);
+                    }
+                    searchResultsVM.MatterDataList = matterDataList1;
+                }
+                else if (UniqueColumnName.Equals(colList.GetSection("matterPracticeGroup").Key))
+                {
+                    var data = ((IEnumerable<dynamic>)searchResultsVM.MatterDataList).Where(d => d.matterPracticeGroup.Contains(searchRequestVM.SearchObject.FilterValue));
+                    data = data.Select(o => o.matterPracticeGroup).Distinct();
+                    foreach (var dt in data)
+                    {
+                        dynamic matterData1 = new ExpandoObject();
+                        matterData1.matterPracticeGroup = dt;
+                        matterDataList1.Add(matterData1);
+                    }
+                    searchResultsVM.MatterDataList = matterDataList1;
+                }
+                else if (UniqueColumnName.Equals(colList.GetSection("matterAreaOfLaw").Key))
+                {
+                    var data = ((IEnumerable<dynamic>)searchResultsVM.MatterDataList).Where(d => d.matterAreaOfLaw.Contains(searchRequestVM.SearchObject.FilterValue));
+                    data = data.Select(o => o.matterAreaOfLaw).Distinct();
+                    foreach (var dt in data)
+                    {
+                        dynamic matterData1 = new ExpandoObject();
+                        matterData1.matterAreaOfLaw = dt;
+                        matterDataList1.Add(matterData1);
+                    }
+                    searchResultsVM.MatterDataList = matterDataList1;
+                }
+                else if (UniqueColumnName.Equals(colList.GetSection("matterSubAreaOfLaw").Key))
+                {
+                    var data = ((IEnumerable<dynamic>)searchResultsVM.MatterDataList).Where(d => d.matterSubAreaOfLaw.Contains(searchRequestVM.SearchObject.FilterValue));
+                    data = data.Select(o => o.matterSubAreaOfLaw).Distinct();
+                    foreach (var dt in data)
+                    {
+                        dynamic matterData1 = new ExpandoObject();
+                        matterData1.matterSubAreaOfLaw = dt;
+                        matterDataList1.Add(matterData1);
+                    }
+                    searchResultsVM.MatterDataList = matterDataList1;
+                }
+                else if (UniqueColumnName.Equals(colList.GetSection("matterResponsibleAttorney").Key))
+                {
+                    var data = ((IEnumerable<dynamic>)searchResultsVM.MatterDataList).Where(d => d.matterResponsibleAttorney.Contains(searchRequestVM.SearchObject.FilterValue));
+                    data = data.Select(o => o.matterResponsibleAttorney).Distinct();
+                    foreach (var dt in data)
+                    {
+                        dynamic matterData1 = new ExpandoObject();
+                        matterData1.matterResponsibleAttorney = dt;
+                        matterDataList1.Add(matterData1);
+                    }
+                    searchResultsVM.MatterDataList = matterDataList1;
+                }
+            }
+
+            return searchResultsVM.MatterDataList;
+        }
+
+        /// <summary>
+        /// to get column name 
+        /// </summary>
+        /// <returns></returns>
+        public string getuniqueColumnName(string uniueColumnName)
+        {
+            var docColumnSesction = configuration.GetSection("Search").GetSection("SearchColumnsUIPickerForMatter");
+            
+            if (searchSettings.ManagedPropertyMatterName.ToString().ToLower().Equals(uniueColumnName))
+            {
+                uniueColumnName = docColumnSesction.GetSection("matterName").Key;
+            }
+            else if (searchSettings.ManagedPropertyClientName.ToString().ToLower().Equals(uniueColumnName) && !generalSettings.IsBackwardCompatible )
+            {
+                uniueColumnName = docColumnSesction.GetSection("matterClient").Key;
+            }
+            else if (searchSettings.ManagedPropertyPracticeGroup.ToString().ToLower().Equals(uniueColumnName))
+            {
+                uniueColumnName = docColumnSesction.GetSection("matterPracticeGroup").Key;
+            }
+            else if (searchSettings.ManagedPropertyResponsibleAttorney.ToString().ToLower().Equals(uniueColumnName))
+            {
+                uniueColumnName = docColumnSesction.GetSection("matterResponsibleAttorney").Key;
+            }
+            else if (searchSettings.ManagedPropertyAreaOfLaw.ToString().ToLower().Equals(uniueColumnName))
+            {
+                uniueColumnName = docColumnSesction.GetSection("matterAreaOfLaw").Key;
+            }
+            else if (searchSettings.ManagedPropertySubAreaOfLaw.ToString().ToLower().Equals(uniueColumnName))
+            {
+                uniueColumnName = docColumnSesction.GetSection("matterSubAreaOfLaw").Key;
+            }
+            else if (searchSettings.ManagedPropertyMatterId.ToString().ToLower().Equals(uniueColumnName))
+            {
+                uniueColumnName = docColumnSesction.GetSection("matterID").Key;
+            }    
+            else
+            {
+                uniueColumnName = string.Empty;
+            }
+
+            return uniueColumnName;
         }
 
         public GenericResponseVM ShareMatterToExternalUser(MatterInformationVM matterInformation)
@@ -646,7 +786,7 @@ namespace Microsoft.Legal.MatterCenter.Web.Common
                 GenericResponseVM genericResponseVM = null;
                 using (clientContext = spoAuthorization.GetClientContext(client.Url))
                 {
-                    IList<ContentType> contentTypeCollection = matterRepositoy.GetContentTypeData(clientContext, matter.ContentTypes, client, matter);
+                    IList<ContentType> contentTypeCollection = matterRepositoy.GetContentTypeData(clientContext, matter.ContentTypes, client, matter);                    
                     if (null != contentTypeCollection && matter.ContentTypes.Count == contentTypeCollection.Count && !string.IsNullOrWhiteSpace(matter.Name))
                     {
                         genericResponseVM = matterRepositoy.AssignContentTypeHelper(matterMetadata, clientContext, contentTypeCollection, client, matter);
@@ -1510,7 +1650,10 @@ namespace Microsoft.Legal.MatterCenter.Web.Common
                 }
                 propertyList.Add(matterSettings.StampedPropertyMatterName, WebUtility.HtmlEncode(matter.Name));
                 propertyList.Add(matterSettings.StampedPropertyMatterID, WebUtility.HtmlEncode(matter.Id));
-                propertyList.Add(matterSettings.StampedPropertyClientName, WebUtility.HtmlEncode(client.Name));
+                if(!propertyList.ContainsKey(matterSettings.StampedPropertyClientName))
+                {
+                    propertyList.Add(matterSettings.StampedPropertyClientName, WebUtility.HtmlEncode(client.Name));
+                }                
                 propertyList.Add(matterSettings.StampedPropertyClientID, WebUtility.HtmlEncode(client.Id));
                 propertyList.Add(matterSettings.StampedPropertyResponsibleAttorney, WebUtility.HtmlEncode(finalResponsibleAttorneysUsers));
                 propertyList.Add(matterSettings.StampedPropertyTeamMembers, WebUtility.HtmlEncode(finalTeamMembers));

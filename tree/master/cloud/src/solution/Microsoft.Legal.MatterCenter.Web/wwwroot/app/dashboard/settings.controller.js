@@ -15,6 +15,7 @@
             vm.documentTypeLawTerms = [];
             vm.primaryMatterType = vm.errorPopUp = false;
             vm.removeDTItem = false;
+            $rootScope.displayOverflow = "display";
 
             vm.taxonomyHierarchyLevels = parseInt(vm.taxonomyHierarchyLevels);
             if (vm.taxonomyHierarchyLevels >= 2) {
@@ -109,9 +110,9 @@
                     Url: configs.global.repositoryUrl
                 },
                 TermStoreDetails: {
-                    TermGroup: "MatterCenterTerms",
-                    TermSetName: "Clients",
-                    CustomPropertyName: "ClientURL"
+                    TermGroup: configs.taxonomy.termGroup,
+                    TermSetName: configs.taxonomy.clientTermSetName,
+                    CustomPropertyName: configs.taxonomy.clientCustomPropertiesURL
                 }
             };
             //#endregion
@@ -128,10 +129,10 @@
                     Url: configs.global.repositoryUrl
                 },
                 TermStoreDetails: {
-                    TermGroup: "MatterCenterTerms",
-                    TermSetName: "Practice Groups",
-                    CustomPropertyName: "ContentTypeName",
-                    DocumentTemplatesName: "DocumentTemplates"
+                    TermGroup: configs.taxonomy.termGroup,
+                    TermSetName: configs.taxonomy.practiceGroupTermSetName,
+                    CustomPropertyName: configs.taxonomy.subAreaOfLawCustomContentTypeProperty,
+                    DocumentTemplatesName: configs.taxonomy.subAreaOfLawDocumentContentTypeProperty,
                 }
             }
 
@@ -269,8 +270,8 @@
                     if (response != "" && !response.isError) {
                         vm.configurations = JSON.parse(response.code);
                         vm.setClientData(vm.configurations);
-                        vm.showrole = "Yes";
-                        vm.showmatterid = "Yes";
+                        vm.showrole = vm.configurations.ShowRole != null ? (vm.configurations.ShowRole == true ? "Yes" : "No") : "No";
+                        vm.showmatterid = vm.configurations.ShowMatterId != null ? (vm.configurations.ShowMatterId == true ? "Yes" : "No") : "No";;
                         vm.nodata = false;
                         vm.lazyloader = true;
                         vm.clientlist = false;
@@ -607,6 +608,9 @@
                     vm.matterdesc = "No";
                 }
                 vm.showmatterconfiguration = "DateTime"
+                if (data.MatterIdType !== null && data.MatterIdType!=='undefined') {
+                    vm.showmatterconfiguration = data.MatterIdType
+                }
             }
             //#endregion
 

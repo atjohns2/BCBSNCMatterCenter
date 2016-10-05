@@ -18,7 +18,7 @@ namespace Microsoft.Legal.MatterCenter.Utility
     public class SearchSettings
     {
         public string SearchResultSourceID { get; set; }
-
+        public string ManagedPropertyExtension { get; set; }
 
         #region Matter Search Related Properties
         public string Schema { get; set; }
@@ -72,6 +72,7 @@ namespace Microsoft.Legal.MatterCenter.Utility
         public string ManagedPropertySPWebUrl { get; set; }
         public string ManagedPropertyDocumentVersion { get; set; }
         public string ManagedPropertyIsDocument { get; set; }
+        public string DocId { get; set; }
         #endregion
 
         #region Pin

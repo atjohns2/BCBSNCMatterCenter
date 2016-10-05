@@ -1,4 +1,5 @@
-﻿<div class='row' style="margin-right:0">
+﻿<!--//adding template-->
+<div class='row' style="margin-right:0">
     <div class='col-xs-8 col-sm-9 col-md-9 col-lg-10' id='documentPopup' title='{{row.entity.documentName}}'>
         <a documentflyout type='button' class='btn btn-link col-xs-12 col-sm-12 txtellipsis hidden-xs' style='text-align: left;padding-left:0' details={{row.entity}}
            ng-click="grid.appScope.vm.getDocumentAssets(row)" loader="grid.appScope.vm.assetsuccess">
@@ -15,7 +16,7 @@
     </div>
     <div class='col-xs-4 col-sm-3 col-md-3 col-lg-2 text-right' id="doccelltemp">
         <div class='dropdown'>
-            <a class='btn btn-link dropdown-toggle ms-Icon ms-Icon--ellipsis ellipsis UiGrid-a' href='' type='button' data-toggle='dropdown'></a>
+            <a class='btn btn-link dropdown-toggle ms-Icon ms-Icon--ellipsis ellipsis UiGrid-a' href='' dropdown type='button' data-toggle='dropdown'></a>
             <ul style='margin:0;padding:0' class='dropdown-menu'>
 
                 <li class='ms-ContextualMenu-item'>

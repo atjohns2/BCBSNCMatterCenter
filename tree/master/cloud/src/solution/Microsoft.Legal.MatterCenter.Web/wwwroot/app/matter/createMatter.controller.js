@@ -2,8 +2,8 @@
     'use strict';
 
     var app = angular.module("matterMain");
-    app.controller('createMatterController', ['$scope', '$state', '$stateParams', 'api', 'matterResource', '$filter', '$window', '$rootScope',
-        function ($scope, $state, $stateParams, api, matterResource, $filter, $window, $rootScope) {
+    app.controller('createMatterController', ['$scope', '$state', '$stateParams', 'api', 'matterResource', '$filter', '$window', '$rootScope', 'adalAuthenticationService',
+        function ($scope, $state, $stateParams, api, matterResource, $filter, $window, $rootScope, adalService) {
             ///All Variables
             var cm = this;
             $rootScope.pageIndex = "4";
@@ -28,23 +28,34 @@
             cm.clientUrl = "";
             cm.errorStatus = false;
             cm.prevButtonDisabled = true;
+            cm.invalidUserCheck = false;
             cm.showRoles = true;
             cm.showMatterId = true;
             cm.matterIdType = "Custom";
+            $rootScope.displayOverflow = "";
+            cm.nextButtonDisabled = false; cm.prevButtonDisabled = true;
             cm.taxonomyHierarchyLevels = configs.taxonomy.levels;
+            cm.schema = configs.search.Schema;
+            cm.isBackwardCompatible = configs.global.isBackwardCompatible;
+            cm.isClientMappedWithHierachy = configs.global.isClientMappedWithHierachy;
             cm.taxonomyHierarchyLevels = parseInt(cm.taxonomyHierarchyLevels);
             if (cm.taxonomyHierarchyLevels >= 2) {
+                cm.parentLevelOneList = [];
                 cm.levelOneList = [];
                 cm.levelTwoList = [];
+                cm.createContent.Tab1Textbox5Label = cm.createContent.Tab1Textbox5Label;
             }
             if (cm.taxonomyHierarchyLevels >= 3) {
                 cm.levelThreeList = [];
+                cm.createContent.Tab1Textbox5Label = cm.createContent.Tab1Textbox5LabelForLevel3;
             }
             if (cm.taxonomyHierarchyLevels >= 4) {
                 cm.levelFourList = [];
+                cm.createContent.Tab1Textbox5Label = cm.createContent.Tab1Textbox5LabelForLevel4;
             }
             if (cm.taxonomyHierarchyLevels >= 5) {
                 cm.levelFiveList = [];
+                cm.createContent.Tab1Textbox5Label = cm.createContent.Tab1Textbox5LabelForLevel5;
             }
 
 
@@ -81,7 +92,9 @@
                 showRoles: true,
                 showMatterId: true,
                 matterIdType: "Custom",
-                specialCharacterExpressionMatter: "[A-Za-z0-9_]+[-A-Za-z0-9_, ]*"
+                specialCharacterExpressionMatter: "[A-Za-z0-9_]+[-A-Za-z0-9_, ]*",
+                isBackwardCompatible: false,
+                isClientMappedWithHierachy:false
             }
 
             var oPageTwoState = {
@@ -280,9 +293,9 @@
                     Url: configs.global.repositoryUrl
                 },
                 TermStoreDetails: {
-                    TermGroup: "MatterCenterTerms",
-                    TermSetName: "Clients",
-                    CustomPropertyName: "ClientURL"
+                    TermGroup: configs.taxonomy.termGroup,
+                    TermSetName: configs.taxonomy.clientTermSetName,
+                    CustomPropertyName: configs.taxonomy.clientCustomPropertiesURL,
                 }
             }
 
@@ -293,10 +306,10 @@
                     Url: configs.global.repositoryUrl
                 },
                 TermStoreDetails: {
-                    TermGroup: "MatterCenterTerms",
-                    TermSetName: "Practice Groups",
-                    CustomPropertyName: "ContentTypeName",
-                    DocumentTemplatesName: "DocumentTemplates"
+                    TermGroup: configs.taxonomy.termGroup,
+                    TermSetName: configs.taxonomy.practiceGroupTermSetName,
+                    CustomPropertyName: configs.taxonomy.subAreaOfLawCustomContentTypeProperty,
+                    DocumentTemplatesName: configs.taxonomy.subAreaOfLawDocumentContentTypeProperty,
                 }
             }
 
@@ -377,8 +390,16 @@
                         else {
                             // cm.pracitceGroupList = response.pgTerms;
                             cm.levelOneList = response.level1;
+                            cm.parentLevelOneList = response;
                             cm.selectedLevelOneItem = response.level1[0];
-                            getTaxonomyHierarchy(response);
+                            if (cm.iCurrentPage == 1) {
+                                getTaxonomyHierarchy(response);
+                            }
+                            else {
+                                if (cm.isClientMappedWithHierachy) {
+                                    getClientsPracticeGroup(cm.selectedClientName);
+                                }
+                            }
                             getRoles(optionsForRoles, function (response) {
                                 cm.assignRoles = response;
 
@@ -487,9 +508,10 @@
                     cm.clientUrl = client.url;
                     cm.popupContainerBackground = "Show";
                     siteCollectionPath = cm.clientUrl;
-
+                    if (cm.isClientMappedWithHierachy) {
+                        getClientsPracticeGroup(cm.selectedClientName);
+                    }                 
                     getDefaultMatterConfigurations(siteCollectionPath, function (result) {
-
                         if (result.isError) {
                             cm.errTextMsg = result.value;
                             cm.errorBorder = "client";
@@ -532,11 +554,14 @@
                             }
                             if (defaultMatterConfig.IsConflictCheck) {
                                 cm.defaultConfilctCheck = defaultMatterConfig.IsConflictCheck;
+                                cm.conflictRadioCheck = cm.defaultConfilctCheck;
                                 cm.secureMatterRadioEnabled = cm.defaultConfilctCheck;
                             }
                             else {
                                 cm.defaultConfilctCheck = defaultMatterConfig.IsConflictCheck;
                                 cm.secureMatterRadioEnabled = cm.defaultConfilctCheck;
+                                cm.conflictRadioCheck = cm.defaultConfilctCheck;
+
                             }
                             if (defaultMatterConfig.IsMatterDescriptionMandatory) {
                                 cm.isMatterDescriptionMandatory = defaultMatterConfig.IsMatterDescriptionMandatory;
@@ -653,6 +678,7 @@
                     cm.showRoles = true;
                     cm.matterIdType = "Custom";
                     cm.clientId = "";
+                    cm.selectedClientName = undefined;
 
                 }
             }
@@ -979,7 +1005,8 @@
                         cm.errorBorder = "";
                         if (response.code != 200) {
                             if (cm.iCurrentPage == 1) {
-                                cm.errTextMsg = "Matter library for this Matter is already created. Kindly delete the library or please enter a different Matter name.";
+                                cm.errTextMsg = cm.createContent.ErrorMessageEntityLibraryCreated;
+                                        //"Matter library for this Matter is already created. Kindly delete the library or please enter a different Matter name.";
                                 cm.errorBorder = "mattername"; showErrorNotification("mattername");
                                 cm.errorPopUpBlock = true;
                                 oPageOneState.oValidMatterName = false;
@@ -1022,11 +1049,15 @@
 
                     if (validateCurrentPage(cm.iCurrentPage)) {
 
-                        cm.sectionName = sectionName;
-                        if (cm.iCurrentPage == 2) { callCheckSecurityGroupExists("snCreateAndShare"); }
-                        cm.iCurrentPage = 3;
-                        localStorage.iLivePage = 3;
-                        makePrevOrNextButton();
+                       
+                        if (cm.iCurrentPage == 2) {
+                            callCheckSecurityGroupExists("snCreateAndShare");
+                        } else {
+                            cm.sectionName = sectionName;
+                            cm.iCurrentPage = 3;
+                            localStorage.iLivePage = 3;
+                            makePrevOrNextButton();
+                    }
 
                     }
 
@@ -1061,12 +1092,12 @@
 
 
             var validateAttornyUserRolesAndPermissins = function () {
-                var responsibleAttorny = 0, fullControl = 0;
+                var responsibleAttorny = 0, fullControl = 0,teamRowNumber=1;
                 if (!cm.showRoles) {
                     assignDefaultRolesToTeamMembers();
                 }
                 for (var iCount = 0; iCount < cm.assignPermissionTeams.length; iCount++) {
-
+                    teamRowNumber = iCount == 0 ? cm.assignPermissionTeams[iCount].assigneTeamRowNumber : teamRowNumber;
                     if ("" !== cm.assignPermissionTeams[iCount].assignedUser) {
 
                         if (cm.assignPermissionTeams[iCount].assignedRole && "" !== cm.assignPermissionTeams[iCount].assignedRole.name) {
@@ -1080,7 +1111,8 @@
 
                             }
                             else {
-                                cm.errTextMsg = "Please provide at least one permission on this  matter. ";
+                                cm.errTextMsg = cm.createContent.ErrorMessageEntityPermission;
+                                    //"Please provide at least one permission on this  matter. ";
                                 cm.errorBorder = "";
                                 cm.errorPopUpBlock = true;
 
@@ -1089,36 +1121,39 @@
                         }
                         else {
                             cm.errorPopUpBlock = true;
-                            cm.errTextMsg = "Enter at least one role for this matter.";
+                            cm.errTextMsg = cm.createContent.ErrorMessageEntityTeamRole1;
+                                //"Enter at least one role for this matter.";
                             cm.errorBorder = "";
                             return false;
                         }
                     }
                     else {
-                        cm.errTextMsg = cm.assignPermissionTeams[iCount].assignedRole.name + " cannot be empty.";
+                        cm.errTextMsg = cm.createContent.ErrorMessageTeamMember1;
+                        // cm.assignPermissionTeams[iCount].assignedRole.name + " cannot be empty.";
                         cm.errorBorder = "";
                         showErrorNotificationAssignTeams(cm.errTextMsg, cm.assignPermissionTeams[iCount].assigneTeamRowNumber, "user");
                         cm.errorPopUpBlock = true;
                         return false;
                     }
-                }
-
+                }             
                 if (responsibleAttorny >= 1) {
                     if (fullControl >= 1) {
                         return true;
                     }
                     else {
-                        cm.errTextMsg = "Please provide at least one user who has Full Control permission on this  matter.";
-                        cm.errorBorder = "permUser1";
-                        showErrorNotificationAssignTeams(cm.errTextMsg, 1, "perm");
+                        cm.errTextMsg = cm.createContent.ErrorMessageEntityTeamPermission2;
+                            //"Please provide at least one user who has Full Control permission on this  matter.";
+                        cm.errorBorder = "permUser" + teamRowNumber;
+                        showErrorNotificationAssignTeams(cm.errTextMsg, teamRowNumber, "perm");
                         cm.errorPopUpBlock = true;
                         return false;
                     }
                 }
                 else {
-                    cm.errTextMsg = "Enter at least one Responsible Attorney for this matter.";
-                    cm.errorBorder = "roleUser1";
-                    showErrorNotificationAssignTeams(cm.errTextMsg, 1, "role");
+                    cm.errTextMsg = cm.createContent.ErrorMessageEntityTeamRole2;
+                        //"Enter at least one Responsible Attorney for this matter.";
+                    cm.errorBorder = "roleUser" + teamRowNumber;
+                    showErrorNotificationAssignTeams(cm.errTextMsg, teamRowNumber, "role");
                     cm.errorPopUpBlock = true;
                     return false;
                 }
@@ -1157,11 +1192,33 @@
             function validateUsers() {
                 var keepGoing = true;
                 var username = "";
+                if (cm.defaultConfilctCheck) {
+                    if (undefined==cm.selectedConflictCheckUser || "" == cm.selectedConflictCheckUser) {
+                        cm.errTextMsg = cm.createContent.ErrorMessageConflictUser;
+                            //"Enter the conflict reviewers name (for auditing purposes).";
+                        cm.errorBorder = "ccheckuser";
+                        showErrorNotification("ccheckuser");
+                        cm.errorPopUpBlock = true;
+                        return false;
+                    }
+                    if (cm.conflictRadioCheck) {
+                    if (undefined == cm.blockedUserName || "" == cm.blockedUserName) {
+                        cm.errTextMsg = cm.createContent.ErrorMessageConflictUser1;
+                            //"Enter users that are conflicted with this matter.";
+                        cm.errorBorder = "cblockuser";
+                        showErrorNotification("cblockuser");
+                        cm.errorPopUpBlock = true;
+                        return false;
+                    }
+                }
+                }
+
                 if (cm.selectedConflictCheckUser && "" !== cm.selectedConflictCheckUser) {
                     username = getUserName(cm.selectedConflictCheckUser + ";", false);
                     if (-1 == cm.oSiteUsers.indexOf(username[0])) {
                         //  cm.blockedUserName.trim()
-                        cm.errTextMsg = "Enter the conflict reviewers name (for auditing purposes).";
+                        cm.errTextMsg = cm.createContent.ErrorMessageConflictUser;
+                            //"Enter the conflict reviewers name (for auditing purposes).";
                         cm.errorBorder = "ccheckuser";
                         showErrorNotification("ccheckuser");
                         cm.errorPopUpBlock = true;
@@ -1172,7 +1229,8 @@
                     username = getUserName(cm.blockedUserName + ";", false);
                     if (-1 == cm.oSiteUsers.indexOf(username[0])) {
                         //  cm.blockedUserName.trim()
-                        cm.errTextMsg = "Enter users that are conflicted with this matter.";
+                        cm.errTextMsg = cm.createContent.ErrorMessageConflictUser1;
+                            //"Enter users that are conflicted with this matter.";
                         cm.errorBorder = "cblockuser";
                         showErrorNotification("cblockuser");
                         cm.errorPopUpBlock = true;
@@ -1184,20 +1242,32 @@
                     if (keepGoing) {
                         if (team.assignedUser && team.assignedUser != "") {//For loop
                             username = getUserName(team.assignedUser + ";", false)
-                            //if (99 == cm.oSiteUsers.indexOf(username[0])) {
-                            //    //  cm.blockedUserName.trim()
-                            //    cm.errTextMsg = "Please enter valid team members.";
-                            //    cm.errorBorder = "";
-                            //    cm.errorPopUpBlock = true;
-                            //    showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
-                            //    cm.errorBorder = "txtUser" + team.assigneTeamRowNumber; keepGoing = false;
-                            //    return false;
+                            if (team.userExsists) {
+                            if (-1 == cm.oSiteUsers.indexOf(username[0])) {
+                                //  cm.blockedUserName.trim()
+                                cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers1;
+                                    //"Please enter valid team members.";
+                                cm.errorBorder = "";
+                                cm.errorPopUpBlock = true;
+                                showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
+                                cm.errorBorder = "txtUser" + team.assigneTeamRowNumber; keepGoing = false;
+                                return false;
 
-                            //}
+                            }
+                            } else {
+                                if (!team.userConfirmation) {
+                                    cm.checkUserExists(team);
+                                    if (!cm.invalidUserCheck) {
+                                        keepGoing = false;
+                                        return false;
+                                    }
+                                }
+                            }
 
                             if (cm.blockedUserName && cm.blockedUserName != "") {
                                 if (team.assignedUser == cm.blockedUserName) {
-                                    cm.errTextMsg = "Please enter individual who is not conflicted.";
+                                    cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers2;
+                                        //"Please enter individual who is not conflicted.";
                                     cm.errorBorder = "";
                                     cm.errorPopUpBlock = true;
                                     showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
@@ -1207,7 +1277,9 @@
                             }
                         }
                         else {
-                            showErrorNotificationAssignTeams(team.assignedRole.name + " cannot be empty", team.assigneTeamRowNumber, "user")
+                            
+                            showErrorNotificationAssignTeams(cm.createContent.ErrorMessageTeamMember1, team.assigneTeamRowNumber, "user")
+                          //  showErrorNotificationAssignTeams(team.assignedRole.name + " cannot be empty", team.assigneTeamRowNumber, "user")
                             cm.errorBorder = "txtUser" + team.assigneTeamRowNumber;
                             keepGoing = false;
                             return false;
@@ -1217,6 +1289,8 @@
 
                 if (keepGoing) {
                     return true;
+                } else {
+                    return false;
                 }
             }
 
@@ -1257,7 +1331,7 @@
             cm.externalusers = [];
 
             cm.onSelect = function ($item, $model, $label, value, fucnValue, $event, username) {
-                console.log(cm.typehead);
+              
                 var typeheadelelen = angular.element('.dropdown-menu li').length;
                 var noresults = true;
                 if (typeheadelelen == 1) {
@@ -1299,8 +1373,19 @@
                         cm.checkUserExists($label, $event);
                     }
                     if (!noresults) {
-                        $label.assignedUser = "";
-                        $label.assignedUser = cm.user;
+                        if (value == "conflictcheckuser") {
+                            $label = "";
+                            cm.selectedConflictCheckUser = "";
+                        }
+                        if (value == "blockuser") {
+                            $label = "";
+                            cm.blockedUserName = "";
+                        }
+                        if (value == "team") {
+                            $label.assignedUser = "";
+                            $label.assignedUser = cm.user;
+                        }
+                      
                     }
                 }
             }
@@ -1311,7 +1396,7 @@
                 angular.forEach(cm.assignPermissionTeams, function (team) { //For loop
                     cm.arrAssignedUserName.push(getUserName(team.assignedUser + ";", true));
                     cm.arrAssignedUserEmails.push(getUserName(team.assignedUser + ";", false));
-                    cm.userIDs.push("txtAssign" + count++);
+                    cm.userIDs.push("txtUser" + count++);
                 });
 
             }
@@ -1319,7 +1404,7 @@
 
             var callCheckSecurityGroupExists = function (sectionName) {
                 //console.log(cm.assignPermissionTeams);
-                getArrAssignedUserNamesAndEmails();
+                getArrAssignedUserNamesAndEmails();                
                 var optionsForSecurityGroupCheck = {
                     Client: {
 
@@ -1346,7 +1431,18 @@
                 checkSecurityGroupExists(optionsForSecurityGroupCheck, function (response) {
                     // console.log(response);                   
                     if (!response.value) {
-                        console.log(" Assign roles and permissions to a particular user for this matter ");
+                        cm.errTextMsg = response.message.split('$')[0];
+                        cm.errorBorder = "";
+                        cm.errorStatus = true;
+                        cm.errorPopUpBlock = true;
+                        var rowNumber= parseInt(response.message.split('$')[1].replace(/[^\d.]/g, ''),10);
+                        cm.errorBorder = "txtUser" + rowNumber;
+                        showErrorNotificationAssignTeams(cm.errTextMsg, rowNumber, "securityuser")
+                        cm.popupContainerBackground = "hide";
+                        cm.sectionName = "snConflictCheck";
+                        cm.iCurrentPage = 2;
+                        localStorage.iLivePage = 2;
+                        makePrevOrNextButton();
                     } else {
                         cm.iCurrentPage = 3; cm.popupContainerBackground = "hide";
                         cm.sectionName = sectionName;
@@ -1494,15 +1590,15 @@
                     cm.primaryMatterType = cm.errorPopUp = false;
                     cm.matterGUID = oPageData.matterGUID;
                     cm.iCurrentPage = 2;
+                    cm.isBackwardCompatible = oPageData.isBackwardCompatible;
+                    cm.isClientMappedWithHierachy = oPageData.isClientMappedWithHierachy
                     cm.includeRssFeeds = (localStorage.getItem("IsRSSSelected") === "true");
                     cm.includeEmail = (localStorage.getItem("IsEmailOptionSelected") === "true");
                     cm.includeCalendar = (localStorage.getItem("IsCalendarSelected") === "true");
                     cm.isMatterDescriptionMandatory = (localStorage.getItem("IsMatterDescriptionMandatory") === "true");
                     cm.defaultConfilctCheck = (localStorage.getItem("IsConflictCheck") === "true");
-
                     cm.includeTasks = (localStorage.getItem("IsTaskSelected") === "true");
-
-                    cm.secureMatterCheck = (localStorage.getItem("IsRestrictedAccessSelected") === "true");
+                    cm.secureMatterCheck = (localStorage.getItem("IsRestrictedAccessSelected") === "true");               
                     if (cm.includeEmail) {
                         cm.createButton = "Create and Notify";
                     }
@@ -1518,8 +1614,7 @@
                     var oPageData = JSON.parse(localStorage.getItem("oPageTwoData"));
                     if (oPageData && oPageData !== null) {
                         cm.chkConfilctCheck = oPageData.ChkConfilctCheck;
-                        cm.selectedConflictCheckUser = oPageData.SelectedConflictCheckUser;
-
+                        cm.selectedConflictCheckUser = oPageData.SelectedConflictCheckUser;                       
                         cm.conflictDate = oPageData.ConflictDate;
                         cm.conflictDate = $filter('date')(cm.conflictDate, 'MM/dd/yyyy');
                         cm.conflictDate = new Date(cm.conflictDate);
@@ -1643,6 +1738,7 @@
                     return re.test(email);
                 }
                 function validate(email) {
+
                     if (validateEmail(email)) {
                         var checkEmailExists = false;
                         if (cm.textInputUser && cm.textInputUser != "") {
@@ -1650,6 +1746,10 @@
                             if (oldUserEmail !== email) {
                                 checkEmailExists = true;
                                 teamDetails.userConfirmation = false;
+                            }
+                            else {
+                                teamDetails.userConfirmation = teamDetails.userConfirmation;
+                                cm.invalidUserCheck = true;
                             }
 
                         } else {
@@ -1698,17 +1798,20 @@
                         angular.forEach(cm.assignPermissionTeams, function (team) {
                             var userEmail = getUserName(team.assignedUser + ";", false)
                             if (userEmail[0] == email) {
-                                cm.errTextMsg = "Please enter a valid email address.";
+                                cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers3;
+                                 //   "Please enter a valid email address.";
                                 cm.errorBorder = "";
                                 cm.errorStatus = true;
                                 cm.errorPopUpBlock = true;
                                 showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
+                                team.userConfirmation = false;
                                 angular.element('#txtUser' + team.assigneTeamRowNumber).attr('confirm', "false");
                                 cm.errorBorder = "txtUser" + team.assigneTeamRowNumber;
                                 return false;
                             }
 
                         });
+                        cm.invalidUserCheck = false;
 
                     }
                 }
@@ -1742,6 +1845,29 @@
                 }
 
                 if (isPageValid) {
+                    //
+                    if (cm.isBackwardCompatible) {
+                        var team = {};
+                        team.assigneTeamRowNumber = cm.assignPermissionTeams.length + 1;
+                        team.assignedUser = adalService.userInfo.profile.given_name + ' ' + adalService.userInfo.profile.family_name + '(' + adalService.userInfo.userName + ')';
+                        team.userConfirmation = true;
+                        team.userExsists = true;
+
+                        angular.forEach(cm.assignRoles, function (assignRole) {
+                            if (assignRole.mandatory) {
+                                team.assignedRole = assignRole;
+                            }
+                        });
+                        angular.forEach(cm.assignPermissions, function (assignPermission) {
+                            if (assignPermission.name == "Full Control") {
+                                team.assignedPermission = assignPermission;
+                            }
+                        });
+                        cm.assignPermissionTeams.push(team);
+
+                    }
+                    //
+
                     cm.popupContainerBackground = "hide";
                     var matterGUID = cm.matterGUID;
                     var arrFolderNames = [];
@@ -1758,7 +1884,7 @@
                     defaultContentType = getDefaultContentTypeValues("defaultcontenttype");
                     var sCheckByUserEmail = (undefined !== cm.selectedConflictCheckUser && null !== cm.selectedConflictCheckUser) ? getUserName(cm.selectedConflictCheckUser.trim() + ";", false) : "";
                     var sCheckBy = getUserEmail(sCheckByUserEmail);
-                    var sBlockUserEmail = (undefined !== cm.blockedUserName && null !== cm.blockedUserName) ? getUserName(cm.blockedUserName.trim() + ";", false) : "";
+                    var sBlockUserEmail = (undefined !== cm.blockedUserName && null !== cm.blockedUserName) ? getUserName(cm.blockedUserName.trim() + ";", false) : [];
                     var sBlockUserName = sBlockUserEmail;
                     var bValid = false;
                     if (cm.defaultConfilctCheck) {
@@ -1777,7 +1903,8 @@
                         }
                         else {
                             cm.popupContainerBackground = "hide";
-                            cm.errTextMsg = "Error in creation of matter: Incorrect inputs.";
+                            cm.errTextMsg = cm.createContent.ErrorMessageEntityCreation1;
+                                //"Error in creation of matter: Incorrect inputs.";
                             showErrorNotificationAssignTeams(cm.errTextMsg, "", "btnCreateMatter");
                             cm.errorBorder = "";
                             cm.errorPopUpBlock = true;
@@ -1820,7 +1947,7 @@
                             },
                             MatterConfigurations: {
                                 IsConflictCheck: cm.chkConfilctCheck,
-                                IsMatterDescriptionMandatory: true,
+                                IsMatterDescriptionMandatory: cm.isMatterDescriptionMandatory,
                                 IsCalendarSelected: cm.includeCalendar,
                                 IsTaskSelected: cm.includeTasks
                             },
@@ -1831,13 +1958,13 @@
 
                         console.log(matterMetdataVM);
 
-                        cm.successMsg = "Step 1/3: Creating matter library and OneNote library... ";
+                        cm.successMsg = cm.createContent.LabelEntityCreationSuccessMsgText1;
                         cm.successBanner = true; cm.createBtnDisabled = true;
                         createMatter(matterMetdataVM, function (response) {
 
                             console.log("createMatter API success");
                             console.log(response);
-                            cm.successMsg = "Step 2/3: Assigning permissions to matter library and OneNote library,associating Content Types, creating view and matter landing page..."
+                            cm.successMsg = cm.createContent.LabelEntityCreationSuccessMsgText2;
 
                             associateContentTypes();
                             assignPermission();
@@ -1968,7 +2095,7 @@
                 var matterGUID = cm.matterGUID;
                 var sCheckByUserEmail = (undefined !== cm.selectedConflictCheckUser && null !== cm.selectedConflictCheckUser) ? getUserName(cm.selectedConflictCheckUser.trim() + ";", false) : "";
                 var sCheckBy = getUserEmail(sCheckByUserEmail);
-                var sBlockUserEmail = (undefined !== cm.blockedUserName && null !== cm.blockedUserName) ? getUserName(cm.blockedUserName.trim() + ";", false) : "";
+                var sBlockUserEmail = (undefined !== cm.blockedUserName && null !== cm.blockedUserName) ? getUserName(cm.blockedUserName.trim() + ";", false) : [];
                 var sBlockUserName = sBlockUserEmail;
                 var arrPermissions = [];
                 arrPermissions = getAssignedUserPermissions();
@@ -1982,7 +2109,7 @@
                     MatterConfigurations: {
 
                         IsConflictCheck: cm.chkConfilctCheck,
-                        IsMatterDescriptionMandatory: true,
+                        IsMatterDescriptionMandatory: cm.isMatterDescriptionMandatory,
                         IsCalendarSelected: cm.includeCalendar,
                         IsTaskSelected: cm.includeTasks,
                         IsRSSSelected: cm.includeRssFeeds
@@ -2025,10 +2152,10 @@
                 //  alert();
                 var matterGUID = cm.matterGUID;
                 cm.successBanner = true;
-                cm.successMsg = "Step 3/3: Updating metadata of matter library and sharing matter with the users... ";
+                cm.successMsg = cm.createContent.LabelEntityCreationSuccessMsgText3;
                 var sCheckByUserEmail = (undefined !== cm.selectedConflictCheckUser && null !== cm.selectedConflictCheckUser) ? getUserName(cm.selectedConflictCheckUser.trim() + ";", false) : "";
                 var sCheckBy = getUserEmail(sCheckByUserEmail);
-                var sBlockUserEmail = (undefined !== cm.blockedUserName && null !== cm.blockedUserName) ? getUserName(cm.blockedUserName.trim() + ";", false) : "";
+                var sBlockUserEmail = (undefined !== cm.blockedUserName && null !== cm.blockedUserName) ? getUserName(cm.blockedUserName.trim() + ";", false) : [];
                 var sBlockUserName = sBlockUserEmail;
                 var arrPermissions = [];
                 arrPermissions = getAssignedUserPermissions();
@@ -2121,7 +2248,7 @@
 
                 oMatterProvisionFlags = {
                     "MatterLandingFlag": cm.bMatterLandingPage,
-                    "SendEmailFlag": true
+                    "SendEmailFlag": cm.includeEmail
                 };
 
                 angular.forEach(oDocumentTemplates, function (item) {
@@ -2206,7 +2333,7 @@
                     MatterProvisionFlags: oMatterProvisionFlags,
                     MatterConfigurations: {
                         IsConflictCheck: cm.chkConfilctCheck,
-                        IsMatterDescriptionMandatory: true
+                        IsMatterDescriptionMandatory: cm.isMatterDescriptionMandatory
                     }
                 }
                 console.log("options for optionsForStampMatterDetails matter");
@@ -2215,7 +2342,7 @@
 
                     console.log("stampProperties Success");
                     console.log(response);
-                    cm.successMsg = "Matter is successfully created. You can find recently created matter over <a target='_blank' href='" + cm.clientUrl + "/SitePages/" + cm.matterGUID + ".aspx'>here</a>.";
+                    cm.successMsg = cm.createContent.LabelSuccessEntityCreation + " <a target='_blank' href='" + cm.clientUrl + "/SitePages/" + cm.matterGUID + ".aspx'>here</a>.";
                     clearAllProperties();
 
                     cm.navigateToSecondSection(cm.sectionName);
@@ -2323,11 +2450,12 @@
                     nLength = arrContentTypes.length;
                     for (nCount = 0; nCount < nLength; nCount++) {
                         if (arrContentTypes[nCount].primaryMatterType === true || 0 === nCount) {
-                            // Check if the isNoFolderStructurePresent flag is set to true
+                            // Check if the isNoFolderStructurePresent flag is set to true                            
                             if (arrContentTypes[nCount].isNoFolderStructurePresent && "false" === arrContentTypes[nCount].isNoFolderStructurePresent.toLowerCase()) {
                                 // If the folder at the specific level is not present then move to the parent level
                                 arrFolderStructure = arrContentTypes[nCount].folderNames && "" !== arrContentTypes[nCount].folderNames ? arrContentTypes[nCount].folderNames.split(";") : arrContentTypes[nCount].foldernamesaol && "" !== arrContentTypes[nCount].foldernamesaol ? arrContentTypes[nCount].foldernamesaol.split(";") : arrContentTypes[nCount].foldernamespg && "" !== arrContentTypes[nCount].foldernamespg ? arrContentTypes[nCount].foldernamespg.split(";") : [];
                             }
+                            
                         }
 
                     }
@@ -2346,8 +2474,8 @@
                             nLength = arrContentTypes.length;
                             for (nCount = 0; nCount < nLength; nCount++) {
                                 if ("contenttypes" == contentTypeValue) {
-                                    if (-1 == arrContents.indexOf(arrContentTypes[nCount].termName)) {
-                                        arrContents.push(arrContentTypes[nCount].termName);
+                                    if (-1 == arrContents.indexOf(arrContentTypes[nCount].documentTemplates)) {
+                                        arrContents.push(arrContentTypes[nCount].documentTemplates);
                                     }
 
                                     var arrAssociatedDocumentTemplates = arrContentTypes[nCount].documentTemplateNames.split(";");
@@ -2369,7 +2497,7 @@
                             for (nCount = 0; nCount < nLength; nCount++) {
                                 if ("defaultcontenttype" == contentTypeValue) {
                                     if (arrContentTypes[nCount].primaryMatterType === true) {
-                                        defaultContentType = arrContentTypes[nCount].termName;
+                                        defaultContentType = arrContentTypes[nCount].documentTemplates;
                                     }
                                 }
                             }
@@ -2651,7 +2779,7 @@
                 cm.assignRoles = [];
                 cm.assignPermissions = [];
                 cm.secureMatterCheck = true;
-                cm.conflictRadioCheck = true;
+                cm.conflictRadioCheck = false;
                 localStorage.iLivePage = 1;
                 localStorage.removeItem("oPageOneData");
                 localStorage.removeItem("oPageTwoData");
@@ -2672,6 +2800,8 @@
                 oPageOneState.showRoles = cm.showRoles;
                 oPageOneState.showMatterId = cm.showMatterId;
                 oPageOneState.matterIdType = cm.matterIdType;
+                oPageOneState.isBackwardCompatible = cm.isBackwardCompatible;
+                oPageOneState.isClientMappedWithHierachy = cm.isClientMappedWithHierachy;
                 //  oPageOneState.chkConflictCheck = cm.chkConfilctCheck;
                 //  oPageOneState.oValidMatterName = oPageOneState.oValidMatterName;
 
@@ -2784,7 +2914,8 @@
                                             }
                                         }
                                         else {
-                                            cm.errTextMsg = "Enter a matter ID.";
+                                            cm.errTextMsg = cm.createContent.ErrorMessageEntityId1;
+                                                //"Enter a matter ID.";
                                             cm.errorBorder = "matterid";
                                             showErrorNotification("matterid");
                                             cm.errorPopUpBlock = true; return false;
@@ -2793,24 +2924,25 @@
                                             if (cm.isMatterDescriptionMandatory) {
                                                 var sCurrentMatterDesc = cm.matterDescription;
                                                 if (undefined !== sCurrentMatterDesc && null !== sCurrentMatterDesc && "" !== sCurrentMatterDesc) {
-                                                    sCurrentMatterDesc = sCurrentMatterDesc.trim(); bInValid = false;
-                                                    var arrValidMatch = sCurrentMatterDesc.match(RegularExpression);
-                                                    if (null === arrValidMatch || arrValidMatch[0] !== sCurrentMatterDesc) {
-                                                        bInValid = false;
-                                                    } else {
-                                                        bInValid = true;
-                                                    }
+                                                    sCurrentMatterDesc = sCurrentMatterDesc.trim();
+                                                    bInValid = true;
+                                                    //var arrValidMatch = sCurrentMatterDesc.match(RegularExpression);
+                                                    //if (null === arrValidMatch || arrValidMatch[0] !== sCurrentMatterDesc) {
+                                                    //    bInValid = false;
+                                                    //} else {
+                                                    //    bInValid = true;
+                                                    //}
                                                 }
                                                 else {
-                                                    cm.errTextMsg = "Enter a description for this matter.";
+                                                    cm.errTextMsg = cm.createContent.ErrorMessageEntityDescription;
+                                                        //"Enter a description for this matter.";
 
                                                     showErrorNotification("matterdescription");
                                                     cm.errorBorder = "matterdescription";
                                                     cm.errorPopUpBlock = true; return false;
                                                 }
                                             }
-                                            else {
-                                                cm.matterDescription = "";
+                                            else {                                                
                                                 bInValid = true;
                                             }
 
@@ -2821,14 +2953,16 @@
                                                     return true;
                                                 }
                                                 else {
-                                                    cm.errTextMsg = "Select matter type by area of law for this matter";
+                                                    cm.errTextMsg = cm.createContent.ErrorMessageSelectType;
+                                                        //"Select matter type by area of law for this matter";
                                                     cm.errorBorder = ""; showErrorNotification("selecttemp");
                                                     cm.errorPopUpBlock = true; return false;
                                                 }
                                             }
                                             else {
                                                 // alert("Enter a description for this matter");
-                                                cm.errTextMsg = "Please enter a valid text which contains only alphanumeric characters, spaces & hyphen";
+                                                cm.errTextMsg = cm.createContent.ErrorMessageSpecialCharacters;
+                                                    //"Please enter a valid text which contains only alphanumeric characters, spaces & hyphen";
                                                 //  cm.errTextMsg = "Enter a description for this matter.";
                                                 //   cm.errorPopUpBlock = "matterDescription";
                                                 showErrorNotification("matterdescription");
@@ -2838,7 +2972,8 @@
                                             }
                                         }
                                         else {
-                                            cm.errTextMsg = "Please enter a valid text which contains only alphanumeric characters, spaces & hyphen.";
+                                            cm.errTextMsg = cm.createContent.ErrorMessageSpecialCharacters;
+                                                //"Please enter a valid text which contains only alphanumeric characters, spaces & hyphen.";
                                             cm.errorBorder = "matterid";
                                             showErrorNotification("matterid");
                                             cm.errorPopUpBlock = true; return false;
@@ -2846,7 +2981,8 @@
 
                                     }
                                     else {
-                                        cm.errTextMsg = "Matter library for this Matter is already created. Kindly delete the library or please enter a different Matter name.";
+                                        cm.errTextMsg = cm.createContent.ErrorMessageEntityLibraryCreated;
+                                            //"Matter library for this Matter is already created. Kindly delete the library or please enter a different Matter name.";
                                         cm.errorBorder = "mattername";
                                         showErrorNotification("mattername");
                                         //var matterErrorEle = document.getElementById("errorBlock");
@@ -2863,7 +2999,8 @@
 
                             }
                             else {
-                                cm.errTextMsg = "Please enter a valid Matter name which contains only alphanumeric characters and spaces";
+                                cm.errTextMsg = cm.createContent.ErrorMessageEntityNameSpecialCharacters;
+                                    //"Please enter a valid Matter name which contains only alphanumeric characters and spaces";
                                 cm.errorBorder = "mattername";
                                 showErrorNotification("mattername");
                                 cm.errorPopUpBlock = true; return false;
@@ -2871,13 +3008,16 @@
 
                         }
                         else {
-                            cm.errTextMsg = "Selected  client for this matter clientId is null ";
+                            cm.errTextMsg = cm.createContent.ErrorMessageEntityId2;
+                                //"Selected  client for this matter clientId is null ";
+                            showErrorNotification("client");
                             cm.errorBorder = "client";
                             cm.errorPopUpBlock = true; return false;
                         }
                     }
                     else {
-                        cm.errTextMsg = "Select a client for this matter ";
+                        cm.errTextMsg = cm.createContent.ErrorMessageEntityTeamOrClient1;
+                            //"Select a client for this matter ";
                         cm.errorBorder = "client";
                         showErrorNotification("client");
                         cm.errorPopUpBlock = true;
@@ -2892,6 +3032,7 @@
 
                             if (undefined !== cm.conflictDate && null !== cm.conflictDate && "" != cm.conflictDate) {
                                 // cm.conflictDate = new Date();
+                                
                                 var validUsers = validateUsers();
                                 var checkUserDExists = false;
                                 if (validUsers) {
@@ -2909,7 +3050,8 @@
 
                             }
                             else {
-                                cm.errTextMsg = "Enter the date on which the conflict check was performed ";
+                                cm.errTextMsg = cm.createContent.ErrorMessageEntityDate;
+                                    //"Enter the date on which the conflict check was performed ";
                                 cm.errorBorder = "cdate"; showErrorNotification("cdate");
                                 cm.errorPopUpBlock = true; return false;
                             }
@@ -2918,7 +3060,8 @@
                         }
                         else {
                             //  cm.sectionName = sectionName;
-                            cm.errTextMsg = "A confilct check must be completed prior to provisioning this matter ";
+                            cm.errTextMsg = cm.createContent.ErrorMessageEntityConflictCheck;
+                                //"A confilct check must be completed prior to provisioning this matter ";
                             cm.errorBorder = "";
                             showErrorNotification("conflictcheck");
                             cm.errorPopUpBlock = true;
@@ -3062,7 +3205,7 @@
             function showErrorNotificationAssignTeams(errorMsg, teamRowNumber, type) {
                 var fieldType = "";
 
-                if (type == "user") {
+                if (type == "user" || type == "securityuser") {
                     fieldType = "txtUser";
                 }
                 else if (type == "role") { fieldType = "roleUser" }
@@ -3090,11 +3233,13 @@
                 var errPopUpCAttorny = document.createElement('style'),
                     errTringleBlockCAttorny = document.createElement('style'),
                     errTringleBorderCAttorny = document.createElement('style'),
-                    errTextMatterCAttorny = document.createElement('style');
+                    errTextMatterCAttorny = document.createElement('style'),
+                    errTxtMatterMsgText = document.createElement('style');
                 errPopUpCAttorny.type = 'text/css';
                 errTringleBlockCAttorny.type = 'text/css';
                 errTringleBorderCAttorny.type = 'text/css';
                 errTextMatterCAttorny.type = 'text/css';
+                errTxtMatterMsgText.type = 'text/css';
 
                 var width = GetWidth();
                 var x = 0, y = 0;
@@ -3110,10 +3255,11 @@
                 errTringleBlockCAttorny.innerHTML = "{min-height: 40px;top: 17px !important;left: 24px;width:100%}";
                 errTringleBorderCAttorny.innerHTML = "{min-height: 40px,top: 17px !important;left: 24px;width:100%}";
                 errTextMatterCAttorny.innerHTML = "{min-height:40px;top:21px !important;left: 24px;width:100%}";
+                errTxtMatterMsgText.innerHTML = ".errTxtMatterMsgText{width:335px !important;}";
                 document.getElementsByTagName('head')[0].appendChild(errPopUpCAttorny);
                 document.getElementsByTagName('head')[0].appendChild(errTringleBlockCAttorny);
                 document.getElementsByTagName('head')[0].appendChild(errTringleBorderCAttorny);
-                document.getElementsByTagName('head')[0].appendChild(errTextMatterCAttorny);
+                document.getElementsByTagName('head')[0].appendChild(errTextMatterCAttorny);               
 
                 //matterErrorEle.style.top = te.offsetTop-26 + "px";
                 //matterErrorEle.style.left = te.offsetLeft + 45 + "px";
@@ -3128,6 +3274,10 @@
                 matterErrorTrinageleBlockEle.classList.add("errTringleBlockCAttorny");
                 matterErrorTrinagleBorderEle.classList.add("errTringleBorderCAttorny");
                 matterErrorTextEle.classList.add("errTextMatterCAttorny");
+                if (type == "securityuser") {
+                    document.getElementsByTagName('head')[0].appendChild(errTxtMatterMsgText);
+                    matterErrorTextEle.classList.add("errTxtMatterMsgText");
+                }
             }
 
             function resizeErrorPopup() {
@@ -3429,7 +3579,39 @@
             }
 
 
-            //#endregion          
+            //#endregion
+
+
+            //#region
+            //function to filter practice groups
+            function getClientsPracticeGroup(clientName) {
+                if (clientName && clientName!=null && clientName != "") {
+                    var levelOneList = [];
+                    var pgTermList = cm.parentLevelOneList.level1;
+                    console.log(pgTermList);
+                    angular.forEach(pgTermList, function (pgTerm) {
+                        if (pgTerm.level2) {
+                            angular.forEach(pgTerm.level2, function (levelTwoTerm) {
+                                if (levelTwoTerm.termName === clientName) {
+                                    levelOneList.push(pgTerm);
+                                    console.log(levelOneList);
+                                }
+                            });
+                        }
+                    });
+                    cm.levelOneList = levelOneList;
+                    var data={};
+                    data.name = cm.parentLevelOneList.name;
+                    data.levels = cm.parentLevelOneList.levels;
+                    data.level1 = levelOneList;
+                    cm.selectedLevelOneItem = cm.levelOneList[0];
+                    getTaxonomyHierarchy(data);
+
+                   // if(pgList.)
+                }
+
+            }
+            //#endregion
 
         }]);
 

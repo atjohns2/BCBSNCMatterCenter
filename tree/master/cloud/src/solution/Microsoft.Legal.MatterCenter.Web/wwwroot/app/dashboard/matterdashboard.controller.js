@@ -1,8 +1,8 @@
 ﻿(function () {
     'use strict;'
     var app = angular.module("matterMain");
-    app.controller('MatterDashBoardController', ['$scope', '$state', '$interval', '$stateParams', 'api', '$timeout', 'matterDashBoardResource', '$rootScope', 'uiGridConstants', '$location', '$http', '$q', '$filter', 'commonFunctions',
-        function matterDashBoardController($scope, $state, $interval, $stateParams, api, $timeout, matterDashBoardResource, $rootScope, uiGridConstants, $location, $http, $q, $filter, commonFunctions) {
+    app.controller('MatterDashBoardController', ['$scope', '$state', '$interval', '$stateParams', 'api', '$timeout', 'matterDashBoardResource', '$rootScope', 'uiGridConstants', '$location', '$http', '$q', '$filter', 'commonFunctions', '$window',
+        function matterDashBoardController($scope, $state, $interval, $stateParams, api, $timeout, matterDashBoardResource, $rootScope, uiGridConstants, $location, $http, $q, $filter, commonFunctions, $window) {
             var vm = this;
             vm.selectedRow = {
                 matterClientUrl: '',
@@ -17,14 +17,17 @@
             vm.clientdropvisible = false;
             vm.pgdrop = false;
             vm.pgdropvisible = false;
+            vm.configsUri = configs.uri;
+            vm.configSearchContent = configs.search;
+            vm.center = configs.search.Schema.toLowerCase();
             vm.matterDashboardConfigs = uiconfigs.MatterDashboard;
             vm.matterConfigContent = uiconfigs.Matters;
+            sortPropertyForAllMatters = configs.search.ManagedPropertyMatterName;
             vm.aoldrop = false;
             vm.aoldropvisible = false;
             vm.checkClient = false;
             vm.sortbydrop = false;
             vm.sortbydropvisible = false;
-            vm.sortbytext = 'None';
             vm.searchText = '';
             vm.lazyloaderdashboard = true;
             vm.lazyloaderclient = true;
@@ -33,13 +36,28 @@
             vm.totalrecords = 0;
             $rootScope.bodyclass = "bodymain";
             $rootScope.profileClass = "hide";
+            $rootScope.displayOverflow = "display";
+            vm.tabClicked = "All Matters";
+            vm.sortbytext = vm.tabClicked == "All Matters" ? vm.matterDashboardConfigs.DropDownOptionText : vm.matterDashboardConfigs.DrpDownOption1Text;
+            vm.showNavTab = false;
+            vm.showInnerNav = true;
+            vm.selectedTab = vm.matterDashboardConfigs.Tab1HeaderText;
+
             //#endregion
-            //#region Variable to show matter count            
+            //#region Variable to show the matter count            
             vm.allMatterCount = 0;
             vm.myMatterCount = 0;
             vm.pinMatterCount = 0;
+            vm.selectedTabInfo = vm.matterDashboardConfigs.Tab2HeaderText + " (" + vm.allMatterCount + ")";
             vm.Pinnedobj = [];
             //#endregion            
+            vm.teamName = '';
+            //#region Get Querystring values
+            if ($location.search() && $location.search().teamName) {
+                vm.teamName = $location.search().teamName;
+                vm.selectedClients = vm.teamName;                
+            }
+            //#endregion
 
             //#region closing all dropdowns on click of page
             vm.closealldrops = function () {
@@ -54,6 +72,8 @@
                 vm.aoldropvisible = false;
                 vm.sortbydrop = false;
                 vm.sortbydropvisible = false;
+                vm.showNavTab = false;
+                vm.showInnerNav = true;
             }
             //#endregion
 
@@ -78,7 +98,8 @@
                 enableSelectAll: false,
                 multiSelect: false,
                 enableColumnMenus: false,
-                enableFiltering: false
+                enableFiltering: false,
+                enableSorting: false
             }
             var columnDefs1 = [];
             angular.forEach(configs.search.searchColumnsUIPickerForMatter, function (value, key) {
@@ -88,9 +109,10 @@
                             field: key,
                             displayName: vm.matterDashboardConfigs.GridColumn1Header,
                             enableColumnMenu: false,
-                            width: "20%",
+                            width: "230",
                             cellTemplate: '../app/dashboard/MatterDashboardCellTemplate.html',
-                            position: value.position
+                            position: value.position,
+                            visible: true
                         });
 
                     }
@@ -101,9 +123,10 @@
                             field: key,
                             displayName: vm.matterDashboardConfigs.GridColumn2Header,
                             enableColumnMenu: false,
-                            width: "15%",
+                            width: "150",
                             cellTemplate: '<div class="ui-grid-cell-contents">{{row.entity.matterClient}}</div>',
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
                     }
                 }
@@ -111,13 +134,16 @@
                     if (value.displayInUI == true && value.position != -1) {
                         columnDefs1.push({
                             field: key,
-                            width: '15%',
+                            width: '200',
                             displayName: vm.matterDashboardConfigs.GridColumn3Header,
                             headerTooltip: 'Click to sort by client.matterid',
+                            headerCellClass: 'matterGridClientClass',
+                            cellClass: 'matterGridClientClass',
                             enableCellEdit: true,
                             cellTemplate: '<div class="ui-grid-cell-contents" >{{row.entity.matterClientId}}.{{row.entity.matterClient}}</div>',
                             enableColumnMenu: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -127,14 +153,14 @@
                     if (value.displayInUI == true && value.position != -1) {
                         columnDefs1.push({
                             field: key,
-                            sort: {
-                                direction: uiGridConstants.DESC,
-                            },
-                            width: '15%',
+                            width: '200',
+                            headerCellClass: 'matterGridModDateClass',
+                            cellClass: 'matterGridModDateClass',
                             displayName: vm.matterDashboardConfigs.GridColumn4Header,
                             cellTemplate: '<div class="ui-grid-cell-contents"  datefilter date="{{row.entity.matterModifiedDate}}"></div>',
                             enableColumnMenu: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -143,12 +169,15 @@
                     if (value.displayInUI == true && value.position != -1) {
                         columnDefs1.push({
                             field: key,
-                            width: '15%',
+                            width: '175',
+                            headerCellClass: 'matterGridAttorClass',
+                            cellClass: 'matterGridAttorClass',
                             headerTooltip: 'Click to sort by attorney',
                             displayName: vm.matterDashboardConfigs.GridColumn5Header,
                             cellTemplate: '<div class="ui-grid-cell-contents">{{row.entity.matterResponsibleAttorney}}</div>',
                             enableColumnMenu: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -157,12 +186,12 @@
                     if (value.displayInUI == true && value.position != -1) {
                         columnDefs1.push({
                             field: key,
-                            displayName: vm.matterDashboardConfigs.GridColumn6Header,
+                            displayName: vm.matterDashboardConfigs.GridColumn4Header,
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
-                            headerCellTemplate: '../app/matter/MatterTemplates/AreaofLawHeaderTemplate.html',
+                            enableColumnMenu: false,
                             width: "210",
-                            visible: false,
+                            visible: value.displayInDashboard,
                             position: value.position
                         });
 
@@ -172,14 +201,14 @@
                     if (value.displayInUI == true && value.position != -1) {
                         columnDefs1.push({
                             field: key,
-                            displayName: vm.matterDashboardConfigs.GridColumn7Header,
+                            displayName: vm.matterDashboardConfigs.GridColumn5Header,
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
-                            headerCellTemplate: '../app/matter/MatterTemplates/OpenDateTemplate.html',
+                            enableColumnMenu: false,
                             width: "170",
                             cellTemplate: '<div class="ui-grid-cell-contents" datefilter date="{{row.entity.matterCreatedDate}}"></div>',
-                            visible: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
                     }
                 }
@@ -191,8 +220,8 @@
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             width: "210",
-                            visible: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -205,8 +234,8 @@
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             width: "210",
-                            visible: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -219,8 +248,8 @@
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             width: "210",
-                            visible: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -229,12 +258,13 @@
                     if (value.displayInUI == true) {
                         columnDefs1.push({
                             field: key,
-                            displayName: vm.matterDashboardConfigs.GridColumn11Header,
+                            displayName: vm.matterDashboardConfigs.GridColumn2Header,
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             width: "210",
-                            visible: false,
-                            position: value.position
+                            enableColumnMenu: false,
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -244,13 +274,13 @@
                     if (value.displayInUI == true) {
                         columnDefs1.push({
                             field: key,
-                            displayName: vm.matterDashboardConfigs.GridColumn12Header,
+                            displayName: vm.matterDashboardConfigs.GridColumn3Header,
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
-                            headerCellTemplate: '../app/matter/MatterTemplates/AreaofLawHeaderTemplate.html',
+                            enableColumnMenu: false,
                             width: "210",
-                            visible: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -263,8 +293,8 @@
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             width: "210",
-                            visible: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -277,8 +307,8 @@
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             width: "210",
-                            visible: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -291,8 +321,8 @@
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             width: "210",
-                            visible: false,
-                            position: value.position
+                            position: value.position,
+                            visible: value.displayInDashboard
                         });
 
                     }
@@ -303,7 +333,7 @@
             columnDefs1.push({
                 field: 'pin',
                 displayName: '',
-                width: '5%',
+                width: '50',
                 cellTemplate: '<div class="ui-grid-cell-contents pad0" ><img ng-src="../Images/{{row.entity.pinType}}-666.png"  ng-click="grid.appScope.vm.pinorunpin($event, row.entity)"/></div>',
                 enableColumnMenu: false,
                 position: 75
@@ -311,7 +341,7 @@
             columnDefs1.push({
                 field: 'upload',
                 displayName: '',
-                width: '7%',
+                width: '60',
                 cellTemplate: '<div class="ui-grid-cell-contents pad0"><img src="../Images/upload-666.png" ng-click="grid.appScope.vm.Openuploadmodal(row.entity.matterName,row.entity.matterClientUrl,row.entity.matterGuid)"/></div>',
                 enableColumnMenu: false,
                 position: 76
@@ -321,14 +351,15 @@
                     return parseInt(col1[fieldName]) - parseInt(col2[fieldName]);
                 }
             }
-            console.log(columnDefs1);
+
             columnDefs1.sort(getSortFunction("position"));
-            console.log(columnDefs1);
+
 
             //#region Matter Grid functionality
             vm.matterGridOptions = {
                 enableHorizontalScrollbar: 0,
                 enableVerticalScrollbar: 0,
+                enableSorting: false,
                 paginationPageSize: gridOptions.paginationPageSize,
                 enableGridMenu: gridOptions.enableGridMenu,
                 enableRowHeaderSelection: gridOptions.enableRowHeaderSelection,
@@ -337,15 +368,6 @@
                 multiSelect: gridOptions.multiSelect,
                 enableFiltering: gridOptions.enableFiltering,
                 columnDefs: columnDefs1,
-                //    [
-                //    { field: 'matterName', width: '20%', displayName: vm.matterDashboardConfigs.GridColumn1Header, cellTemplate: '../app/dashboard/MatterDashboardCellTemplate.html', enableColumnMenu: false },
-                //    { field: 'matterClient', width: '15%', displayName: vm.matterDashboardConfigs.GridColumn2Header, cellTemplate: '<div class="ui-grid-cell-contents">{{row.entity.matterClient}}</div>', enableColumnMenu: false },
-                //    { field: 'matterClientId', width: '15%', displayName: vm.matterDashboardConfigs.GridColumn3Header, headerTooltip: 'Click to sort by client.matterid', enableCellEdit: true, cellTemplate: '<div class="ui-grid-cell-contents" >{{row.entity.matterClientId}}.{{row.entity.matterClient}}</div>', enableColumnMenu: false },
-                //    { field: 'matterModifiedDate', width: '15%', displayName: vm.matterDashboardConfigs.GridColumn4Header, cellTemplate: '<div class="ui-grid-cell-contents"  datefilter date="{{row.entity.matterModifiedDate}}"></div>', enableColumnMenu: false },
-                //    { field: 'matterResponsibleAttorney', width: '15%', headerTooltip: 'Click to sort by attorney', displayName: vm.matterDashboardConfigs.GridColumn5Header, cellTemplate: '<div class="ui-grid-cell-contents">{{row.entity.matterResponsibleAttorney}}</div>', enableColumnMenu: false },
-                //    { field: 'pin', displayName: '', width: '5%', cellTemplate: '<div class="ui-grid-cell-contents pad0" ><img ng-src="../Images/{{row.entity.pinType}}-666.png"  ng-click="grid.appScope.vm.pinorunpin($event, row.entity)"/></div>', enableColumnMenu: false },
-                //    { field: 'upload', displayName: '', width: '7%', cellTemplate: '<div class="ui-grid-cell-contents pad0"><img src="../Images/upload-666.png" ng-click="grid.appScope.vm.Openuploadmodal(row.entity.matterName,row.entity.matterClientUrl,row.entity.matterGuid)"/></div>', enableColumnMenu: false }
-                //],
                 onRegisterApi: function (gridApi) {
                     vm.gridApi = gridApi;
                     //Set the selected row of the grid to selectedRow property of the controller
@@ -362,9 +384,9 @@
                     Url: configs.global.repositoryUrl
                 },
                 TermStoreDetails: {
-                    TermGroup: "MatterCenterTerms",
-                    TermSetName: "Clients",
-                    CustomPropertyName: "ClientURL"
+                    TermGroup: configs.taxonomy.termGroup,
+                    TermSetName: configs.taxonomy.clientTermSetName,
+                    CustomPropertyName: configs.taxonomy.clientCustomPropertiesURL,
                 }
             };
 
@@ -373,10 +395,10 @@
                     Url: configs.global.repositoryUrl
                 },
                 TermStoreDetails: {
-                    TermGroup: "MatterCenterTerms",
-                    TermSetName: "Practice Groups",
-                    CustomPropertyName: "ContentTypeName",
-                    DocumentTemplatesName: "DocumentTemplates"
+                    TermGroup: configs.taxonomy.termGroup,
+                    TermSetName: configs.taxonomy.practiceGroupTermSetName,
+                    CustomPropertyName: configs.taxonomy.subAreaOfLawCustomContentTypeProperty,
+                    DocumentTemplatesName: configs.taxonomy.subAreaOfLawDocumentContentTypeProperty,
                 }
             }
 
@@ -479,7 +501,8 @@
                     },
                     Sort: {
                         ByProperty: 'LastModifiedTime',
-                        Direction: 1
+                        Direction: 1,
+                        ByColumn: ""
                     }
                 }
             };
@@ -487,22 +510,37 @@
             //#reion This function will get counts for all matters, my matters and pinned matters
             vm.getMatterCounts = function () {
                 vm.lazyloaderdashboard = false;
+                vm.divuigrid = false;
+                vm.displaypagination = false;
                 getMatterCounts(jsonMatterSearchRequest, function (response) {
                     vm.allMatterCount = response.allMatterCounts;
                     vm.myMatterCount = response.myMatterCounts;
                     vm.pinMatterCount = response.pinnedMatterCounts;
                     vm.totalrecords = response.allMatterCounts;
+                    //vm.selectedTabInfo = vm.matterDashboardConfigs.Tab1HeaderText + " (" + vm.myMatterCount + ")";
+                    if (vm.selectedTab == vm.matterDashboardConfigs.Tab1HeaderText) {
+                        vm.selectedTabInfo = vm.matterDashboardConfigs.Tab1HeaderText + " (" + response.myMatterCounts + ")";
+                    } else if (vm.selectedTab == vm.matterDashboardConfigs.Tab2HeaderText) {
+                        vm.selectedTabInfo = vm.matterDashboardConfigs.Tab2HeaderText + " (" + response.allMatterCounts + ")";
+                    } else {
+                        vm.selectedTabInfo = vm.matterDashboardConfigs.Tab3HeaderText + " (" + response.pinnedMatterCounts + ")";
+                    }
                     if (!$scope.$$phase) {
                         $scope.$apply();
                     }
                     vm.pagination();
                     vm.lazyloaderdashboard = true;
+                    vm.divuigrid = true;
+                    vm.displaypagination = true;
                 });
             }
             //#endregion
 
             //#region This api will get all matters which are pinned and this will be invoked when the user clicks on "Pinned Matters Tab"
             vm.getMatterPinned = function () {
+                vm.tabClicked = "Pinned Matters";
+                vm.selectedTab == "Pinned matters";
+                vm.sortbytext = vm.matterDashboardConfigs.DrpDownOption1Text;
                 vm.lazyloaderdashboard = false;
                 vm.divuigrid = false;
                 vm.displaypagination = false;
@@ -510,7 +548,7 @@
                 var pinnedMattersRequest = {
                     Url: configs.global.repositoryUrl//ToDo: Read from config.js
                 }
-                getPinnedMatters(pinnedMattersRequest, function (response) {
+                getPinnedMatters(jsonMatterSearchRequest, function (response) {
                     if (response == "") {
                         vm.nodata = true;
                         vm.divuigrid = false;
@@ -527,6 +565,7 @@
                         vm.Pinnedobj = response
                         vm.matterGridOptions.data = response;
                         vm.totalrecords = vm.pinMatterCount;
+                        vm.selectedTabCount = vm.pinMatterCount;
                         vm.pagination();
                         if (!$scope.$$phase) {
                             $scope.$apply();
@@ -545,7 +584,7 @@
             vm.searchMatters = function (val) {
                 var finalSearchText = "";
                 if (val != "") {
-                    finalSearchText = "(MCMatterName:" + val + "* OR MCMatterID:" + val + "*)";
+                    finalSearchText = "(" + configs.search.ManagedPropertyMatterName + ":" + val + "* OR " + configs.search.ManagedPropertyMatterId + ":" + val + "*)";
                 }
                 vm.pagenumber = 1;
                 jsonMatterSearchRequest.SearchObject.PageNumber = vm.pagenumber;
@@ -565,7 +604,7 @@
                     searchToText = searchToText.replace(")", "")
                     var firstText = searchToText.split(',')[0]
                     var secondText = searchToText.split(',')[1]
-                    var finalSearchText = '(MCMatterName:"' + firstText.trim() + '" AND MCMatterID:"' + secondText.trim() + '")'
+                    var finalSearchText = "(" + configs.search.ManagedPropertyMatterName + ":" + val + "* OR " + configs.search.ManagedPropertyMatterId + ":" + val + "*)";
                 }
                 jsonMatterSearchRequest.SearchObject.SearchTerm = finalSearchText;
                 jsonMatterSearchRequest.SearchObject.Sort.Direction = 0;
@@ -591,7 +630,7 @@
                         searchToText = searchToText.replace(")", "")
                         var firstText = searchToText.split(',')[0]
                         var secondText = searchToText.split(',')[1]
-                        finalSearchText = '(MCMatterName:"' + firstText.trim() + '" AND MCMatterID:"' + secondText.trim() + '")'
+                        finalSearchText = '(' + configs.search.ManagedPropertyMatterName + ':"' + firstText.trim() + '" AND ' + configs.search.ManagedPropertyMatterId + ':"' + secondText.trim() + '")'
                     } else {
                         finalSearchText = commonFunctions.searchFilter(vm.searchText);
                     }
@@ -604,17 +643,17 @@
                         vm.totalrecords = response.length;
                         vm.getMatterCounts();
                         vm.matterGridOptions.data = response;
-                        vm.lazyloaderdashboard = true;
-                        vm.divuigrid = false;
+                        //vm.lazyloaderdashboard = true;
+                        //vm.divuigrid = false;
                         vm.nodata = true;
                         vm.pagination();
                     } else {
                         vm.getMatterCounts();
                         vm.totalrecords = response.length;
                         vm.matterGridOptions.data = response;
-                        vm.divuigrid = true;
+                        //vm.divuigrid = true;
                         vm.nodata = false;
-                        vm.lazyloaderdashboard = true;
+                        //vm.lazyloaderdashboard = true;
                         vm.pagination();
                     }
                 });
@@ -623,6 +662,9 @@
 
 
             vm.myMatters = function () {
+                vm.tabClicked = "My Matters";
+                vm.selectedTab == "My matters";
+                vm.sortbytext = vm.matterDashboardConfigs.DrpDownOption1Text;
                 vm.lazyloaderdashboard = false;
                 vm.divuigrid = false;
                 vm.displaypagination = false;
@@ -635,7 +677,8 @@
                         searchToText = searchToText.replace(")", "")
                         var firstText = searchToText.split(',')[0]
                         var secondText = searchToText.split(',')[1]
-                        var finalSearchText = '(MCMatterName:"' + firstText.trim() + '" AND MCMatterID:"' + secondText.trim() + '")'
+                        var finalSearchText = '(' + configs.search.ManagedPropertyMatterName + ':"' + firstText.trim() + '" AND ' + configs.search.ManagedPropertyMatterId + ':"' + secondText.trim() + '")'
+                        //var finalSearchText = '(MCMatterName:"' + firstText.trim() + '" AND MCMatterID:"' + secondText.trim() + '")'
                     } else {
                         finalSearchText = commonFunctions.searchFilter(vm.searchText);
                     }
@@ -643,6 +686,7 @@
                 jsonMatterSearchRequest.SearchObject.SearchTerm = finalSearchText;
                 jsonMatterSearchRequest.SearchObject.Filters.FilterByMe = 1;
                 jsonMatterSearchRequest.SearchObject.PageNumber = 1;
+                jsonMatterSearchRequest.SearchObject.Sort.ByProperty = "LastModifiedTime";
                 jsonMatterSearchRequest.SearchObject.ItemsPerPage = gridOptions.paginationPageSize;
                 get(jsonMatterSearchRequest, function (response) {
                     if (response == "") {
@@ -652,18 +696,49 @@
                         vm.nodata = true;
                     }
                     else {
-                        vm.matterGridOptions.data = response;
-                        vm.lazyloaderdashboard = true;
-                        vm.totalrecords = vm.myMatterCount;
-                        vm.divuigrid = true;
-                        vm.nodata = false;
-                        vm.pagination();
+                        getPinnedMatters(jsonMatterSearchRequest, function (pinnedResponse) {
+                            if (pinnedResponse && pinnedResponse.length > 0) {
+                                vm.Pinnedobj = pinnedResponse;
+                                vm.pinMatterCount = vm.Pinnedobj.length
+                                angular.forEach(pinnedResponse, function (pinobj) {
+                                    angular.forEach(response, function (res) {
+                                        //Check if the pinned matter name is equal to search matter name
+                                        if (pinobj.matterName == res.matterName) {
+                                            if (res.ismatterdone == undefined && !res.ismatterdone) {
+                                                res.ismatterdone = true;
+                                                res.pinType = "unpin"
+                                            }
+                                        }
+                                    });
+                                });
+                                vm.matterGridOptions.data = response;
+                                vm.totalrecords = vm.allMatterCount;
+                                vm.selectedTabCount = vm.allMatterCount;
+                                vm.pagination();
+                                vm.lazyloaderdashboard = true;
+                                vm.divuigrid = true;
+                                vm.getMatterCounts();
+                            }
+                            else {
+                                vm.lazyloaderdashboard = true;
+                                vm.matterGridOptions.data = response;
+                                vm.totalrecords = vm.allMatterCount;
+                                vm.selectedTabCount = vm.allMatterCount;
+                                vm.pagination();
+                                vm.pinMatterCount = 0;
+                                vm.divuigrid = true;
+                                vm.getMatterCounts();
+                            }
+                        });
                     }
                 });
             }
 
             //This search function will be used for binding search results to the grid
             vm.search = function (isMy) {
+                vm.tabClicked = "All Matters";
+                vm.selectedTab == "All matters";
+                vm.sortbytext = vm.matterDashboardConfigs.DropDownOptionText;
                 vm.lazyloaderdashboard = false;
                 vm.divuigrid = false;
                 vm.displaypagination = false;
@@ -676,7 +751,8 @@
                         searchToText = searchToText.replace(")", "")
                         var firstText = searchToText.split(',')[0]
                         var secondText = searchToText.split(',')[1]
-                        var finalSearchText = '(MCMatterName:"' + firstText.trim() + '" AND MCMatterID:"' + secondText.trim() + '")';
+                        var finalSearchText = '(' + configs.search.ManagedPropertyMatterName + ':"' + firstText.trim() + '" AND ' + configs.search.ManagedPropertyMatterId + ':"' + secondText.trim() + '")'
+                        //var finalSearchText = '(MCMatterName:"' + firstText.trim() + '" AND MCMatterID:"' + secondText.trim() + '")';
                     } else {
                         finalSearchText = commonFunctions.searchFilter(vm.searchText);
                     }
@@ -688,10 +764,12 @@
                 var tempMatters = [];
                 jsonMatterSearchRequest.SearchObject.Filters.FilterByMe = 0;
                 jsonMatterSearchRequest.SearchObject.PageNumber = 1;
+                jsonMatterSearchRequest.SearchObject.Sort.ByProperty = sortPropertyForAllMatters;
+                jsonMatterSearchRequest.SearchObject.Sort.Direction = 0;
                 jsonMatterSearchRequest.SearchObject.ItemsPerPage = gridOptions.paginationPageSize;
                 get(jsonMatterSearchRequest, function (response) {
                     //We need to call pinned api to determine whether a matter is pinned or not                    
-                    getPinnedMatters(pinnedMattersRequest, function (pinnedResponse) {
+                    getPinnedMatters(jsonMatterSearchRequest, function (pinnedResponse) {
                         if (pinnedResponse && pinnedResponse.length > 0) {
                             vm.Pinnedobj = pinnedResponse;
                             vm.pinMatterCount = vm.Pinnedobj.length
@@ -708,15 +786,17 @@
                             });
                             vm.matterGridOptions.data = response;
                             vm.totalrecords = vm.allMatterCount;
+                            vm.selectedTabCount = vm.allMatterCount;
                             vm.pagination();
                             vm.lazyloaderdashboard = true;
                             vm.divuigrid = true;
-                            vm.getMatterCounts();
+
                         }
                         else {
                             vm.lazyloaderdashboard = true;
                             vm.matterGridOptions.data = response;
                             vm.totalrecords = vm.allMatterCount;
+                            vm.selectedTabCount = vm.allMatterCount;
                             vm.pagination();
                             vm.pinMatterCount = 0;
                             vm.divuigrid = true;
@@ -729,7 +809,7 @@
 
             //This function will pin or unpin the matter based on the image button clicked
             vm.pinorunpin = function (e, currentRowData) {
-                vm.lazyloaderdashboard = false;
+                //vm.lazyloaderdashboard = false;
                 if (e.currentTarget.src.toLowerCase().indexOf("images/pin-666.png") > 0) {
                     e.currentTarget.src = "../Images/loadingGreen.gif";
                     var pinRequest = {
@@ -760,7 +840,7 @@
                             e.currentTarget.src = "../images/unpin-666.png";
                             vm.pinMatterCount = parseInt(vm.pinMatterCount, 10) + 1;
                         }
-                        vm.lazyloaderdashboard = true;
+                        //vm.lazyloaderdashboard = true;
                     });
                 }
                 else if (e.currentTarget.src.toLowerCase().indexOf("images/unpin-666.png") > 0) {
@@ -775,11 +855,17 @@
                     }
                     unpinMatter(unpinRequest, function (response) {
                         if (response.isMatterUnPinned) {
-                            e.currentTarget.src = "../images/unpin-666.png";
+
                             vm.pinMatterCount = parseInt(vm.pinMatterCount, 10) - 1;
-                            vm.matterGridOptions.data.splice(vm.matterGridOptions.data.indexOf(currentRowData), 1)
+                            if (vm.tabClicked.toLowerCase().indexOf("pinned") >= 0) {
+                                e.currentTarget.src = "../images/unpin-666.png";
+                                vm.matterGridOptions.data.splice(vm.matterGridOptions.data.indexOf(currentRowData), 1)
+                            }
+                            else {
+                                e.currentTarget.src = "../images/pin-666.png";
+                            }
                         }
-                        vm.lazyloaderdashboard = true;
+                        //vm.lazyloaderdashboard = true;
                     });
                 }
 
@@ -979,7 +1065,7 @@
                     vm.lazyloaderaol = true;
                 }
             }
-            //#endregion
+            //#endregion          
 
             //#Region : Function handle the keyup events in advanced search to check and unchecked user selection.
             vm.customSelection = function (type) {
@@ -1264,7 +1350,7 @@
 
             //Call search api on page load
             //$interval(function () { vm.getMatterCounts(); }, 800, 3);
-            $timeout(function () { vm.search() }, 500);
+            $timeout(function () { vm.myMatters() }, 500);
 
 
             //#region For Sorting by Alphebatical or Created date
@@ -1274,58 +1360,105 @@
                 vm.divuigrid = false;
                 vm.displaypagination = false;
                 vm.nodata = false;
-                get(jsonMatterSearchRequest, function (response) {
-                    vm.lazyloader = true;
-                    if (response == "") {
-                        vm.divuigrid = false;
-                        vm.nodata = true;
-                        vm.lazyloaderdashboard = true;
-                        vm.getMatterCounts();
-                        vm.pagination();
-                        $scope.errorMessage = response.message;
-                    } else {
-                        vm.matterGridOptions.data = response;
-                        vm.divuigrid = true;
-                        vm.nodata = false;
-                        vm.lazyloaderdashboard = true;
-                        vm.getMatterCounts();
-                        vm.pagination();
-                        if (!$scope.$$phase) {
-                            $scope.$apply();
+                if (vm.tabClicked === "Pinned Matters") {
+                    getPinnedMatters(jsonMatterSearchRequest, function (response) {
+                        if (response == "") {
+                            vm.nodata = true;
+                            vm.divuigrid = false;
+                            vm.displaypagination = false;
+                            vm.lazyloaderdashboard = true;
                         }
-                    }
-                });
+                        else {
+                            var pinnedResponse = response;
+                            if (response && response.length > 0) {
+                                angular.forEach(response, function (res) {
+                                    res.pinType = "unpin"
+                                })
+                            }
+                            vm.Pinnedobj = response
+                            vm.matterGridOptions.data = response;
+                            vm.totalrecords = vm.pinMatterCount;
+                            vm.selectedTabCount = vm.pinMatterCount;
+                            vm.pagination();
+                            if (!$scope.$$phase) {
+                                $scope.$apply();
+                            }
+                            vm.nodata = false;
+                            vm.divuigrid = true;
+                            vm.lazyloaderdashboard = true;
+                            vm.displaypagination = true;
+                        }
+                    });
+                }
+                else {
+                    get(jsonMatterSearchRequest, function (response) {
+                        vm.lazyloader = true;
+                        if (response == "") {
+                            vm.divuigrid = false;
+                            vm.nodata = true;
+                            vm.lazyloaderdashboard = true;
+                            vm.getMatterCounts();
+                            vm.pagination();
+                            $scope.errorMessage = response.message;
+                        } else {
+                            vm.matterGridOptions.data = response;
+                            vm.divuigrid = true;
+                            vm.nodata = false;
+                            vm.lazyloaderdashboard = true;
+                            vm.getMatterCounts();
+                            vm.pagination();
+                            if (!$scope.$$phase) {
+                                $scope.$apply();
+                            }
+                        }
+                    });
+                }
             }
 
 
-            vm.sortyby = function (sortexp, data) {
+            vm.sortExpression = function (byProperty, byColumn, sortDirection) {
+                jsonMatterSearchRequest.SearchObject.Sort.ByProperty = byProperty;
+                jsonMatterSearchRequest.SearchObject.Sort.Direction = sortDirection;
+                jsonMatterSearchRequest.SearchObject.Sort.ByColumn = byColumn;
+                vm.FilterByType();
+            }
+
+            vm.sortby = function (sortexp, data) {
                 vm.sortbytext = data;
-                if (sortexp == 'AlphabeticalUp') {
-
-                    jsonMatterSearchRequest.SearchObject.Sort.ByProperty = "MCMatterName";
-                    jsonMatterSearchRequest.SearchObject.Sort.Direction = 0;
-                    vm.FilterByType();
-                } else if (sortexp == 'AlphabeticalDown') {
-
-                    jsonMatterSearchRequest.SearchObject.Sort.ByProperty = "MCMatterName";
-                    jsonMatterSearchRequest.SearchObject.Sort.Direction = 1;
-                    vm.FilterByType();
-                } else if (sortexp == 'CreateddateUp') {
-
-                    jsonMatterSearchRequest.SearchObject.Sort.ByProperty = "MCOpenDate";
-                    jsonMatterSearchRequest.SearchObject.Sort.Direction = 0;
-                    vm.FilterByType();
+                vm.sortbydrop = false;
+                if (vm.tabClicked !== "Pinned Matters") {
+                    if (sortexp == 'AlphabeticalUp') {
+                        vm.sortExpression(vm.configSearchContent.ManagedPropertyMatterName, vm.configSearchContent.ManagedPropertyMatterName, 0);
+                    }
+                    else if (sortexp == 'AlphabeticalDown') {
+                        vm.sortExpression(vm.configSearchContent.ManagedPropertyMatterName, vm.configSearchContent.ManagedPropertyMatterName, 1);
+                    }
+                    else if (sortexp == 'CreateddateUp') {
+                        vm.sortExpression(vm.configSearchContent.ManagedPropertyOpenDate, vm.configSearchContent.ManagedPropertyOpenDate, 0);
+                    }
+                    else if (sortexp == 'CreateddateDown') {
+                        vm.sortExpression(vm.configSearchContent.ManagedPropertyOpenDate, vm.configSearchContent.ManagedPropertyOpenDate, 1);
+                    }
+                    else {
+                        vm.sortExpression(vm.configSearchContent.ManagedPropertyLastModifiedTime, vm.configSearchContent.ManagedPropertyLastModifiedTime, 1);
+                    }
                 }
-                else if (sortexp == 'CreateddateDown') {
-
-                    jsonMatterSearchRequest.SearchObject.Sort.ByProperty = "MCOpenDate";
-                    jsonMatterSearchRequest.SearchObject.Sort.Direction = 1;
-                    vm.FilterByType();
-                } else {
-
-                    jsonMatterSearchRequest.SearchObject.Sort.ByProperty = "LastModifiedTime";
-                    jsonMatterSearchRequest.SearchObject.Sort.Direction = 1;
-                    vm.FilterByType();
+                else {
+                    if (sortexp == 'AlphabeticalUp') {
+                        vm.sortExpression("MatterName", "MatterName", 0);
+                    }
+                    else if (sortexp == 'AlphabeticalDown') {
+                        vm.sortExpression("MatterName", "MatterName", 1);
+                    }
+                    else if (sortexp == 'CreateddateUp') {
+                        vm.sortExpression("MatterCreatedDate", "MatterCreatedDate", 0);
+                    }
+                    else if (sortexp == 'CreateddateDown') {
+                        vm.sortExpression("MatterCreatedDate", "MatterCreatedDate", 1);
+                    }
+                    else {
+                        vm.sortExpression("MatterModifiedDate", "MatterModifiedDate", 1);
+                    }
                 }
             }
 
@@ -1697,7 +1830,11 @@
             }
             //#endregion
 
-
+            if (vm.teamName !== '') {
+                vm.selectedTab = "All matters";
+                
+                vm.getSearchResults();
+            }
             //#region Exporting to Excel Test
             vm.export = function () {
                 //vm.lazyloaderdashboard = false;
@@ -1715,29 +1852,55 @@
                             AOLList: jsonMatterSearchRequest.SearchObject.Filters.AOLList,
                             FromDate: jsonMatterSearchRequest.SearchObject.Filters.FromDate,
                             ToDate: jsonMatterSearchRequest.SearchObject.Filters.ToDate,
-                            FilterByMe: 0
+                            FilterByMe: jsonMatterSearchRequest.SearchObject.Filters.FilterByMe
                         },
                         Sort: {
-                            ByProperty: 'LastModifiedTime',
-                            Direction: 1
+                            ByProperty: jsonMatterSearchRequest.SearchObject.Sort.ByProperty,
+                            Direction: jsonMatterSearchRequest.SearchObject.Sort.Direction
                         }
                     }
                 };
-                get(exportMatterSearchRequest, function (response) {
-                    if (response == "") {
-                        //vm.lazyloaderdashboard = true;
-                    } else {
-                        vm.exportDate = response;
+                if (vm.tabClicked != "Pinned Matters") {
 
-                        $timeout(function () {
-                            var blob = new Blob([document.getElementById('exportable').innerHTML], {
-                                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8"
-                            });
-                            saveAs(blob, "Matters.xls");
+                    get(exportMatterSearchRequest, function (response) {
+                        if (response == "") {
                             //vm.lazyloaderdashboard = true;
-                        }, 1000);
+                        } else {
+                            vm.exportDate = response;
+
+                            $timeout(function () {
+                                $("#exportable").table2excel({
+                                    // exclude CSS class
+                                    exclude: ".noExl",
+                                    name: "Matters",
+                                    filename: "Matters" //do not include extension
+                                });
+
+                            }, 1000);
+
+                        }
+                    });
+                } else {
+                    var pinnedMattersRequest = {
+                        Url: configs.global.repositoryUrl//ToDo: Read from config.js
                     }
-                });
+                    getPinnedMatters(exportMatterSearchRequest, function (response) {
+                        if (response == "") {
+
+                        } else {
+                            vm.exportDate = response;
+
+                            $timeout(function () {
+                                $("#exportable").table2excel({
+                                    // exclude CSS class
+                                    exclude: ".noExl",
+                                    name: "Matters",
+                                    filename: "Matters" //do not include extension
+                                });
+                            }, 1000);
+                        }
+                    });
+                }
             }
 
             //#endregion
@@ -1745,9 +1908,62 @@
             //#region for opening view matters url in new window
             vm.viewMatterDetails = function (url, guid) {
                 var viewmatterurl = url + '/SitePages/' + guid + '.aspx';
-                window.open(viewmatterurl, 'viewmatterwindow', 'toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=650,height=500')
+                window.open(viewmatterurl, '_parent');
             }
             //#endregion
+
+            //#region showing the hidden tabs in responsive
+            vm.showDocTabs = function ($event) {
+                $event.stopPropagation();
+                if (vm.showInnerNav) {
+                    vm.showNavTab = true;
+                    vm.showInnerNav = false;
+                }
+            }
+
+            vm.showSelectedTabs = function (name, count) {
+                vm.selectedTab = name;
+                vm.selectedTabInfo = vm.selectedTab + " (" + count + ")";
+                if (name == vm.matterDashboardConfigs.Tab1HeaderText) {
+                    vm.myMatters();
+                }
+                else if (name == vm.matterDashboardConfigs.Tab2HeaderText) {
+                    vm.search();
+                } else {
+                    vm.getMatterPinned();
+                }
+            }
+            //#endregion
+
+            //#region To display modal up in center of the screen...
+            //Start 
+
+
+            vm.reposition = function () {
+                var modal = $(this)
+
+                var dialog = modal.find('.modal-dialog');
+                modal.css('display', 'block');
+                // Dividing by two centers the modal exactly, but dividing by three  
+                // or four works better for larger screens. 
+                dialog.css("margin-top", Math.max(0, (screen.height - dialog.height()) / 4));
+            }
+            // Reposition when a modal is shown 
+            jQuery('.modal').on('show.bs.modal', vm.reposition);
+            // Reposition when the window is resized 
+            jQuery(window).on('resize', function () {
+                jQuery('.modal:visible').each(vm.reposition);
+            });
+
+            $timeout(vm.reposition(), 100);
+            //#endregion 
+
+            angular.element($window).bind('resize', function () {
+                if ($window.innerWidth > 867) {
+                    vm.showNavTab = false;
+                    vm.showInnerNav = true;
+                }
+            });
         }
     ]);
 

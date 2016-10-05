@@ -1,5 +1,4 @@
 ﻿/// <reference path="documentheadertemplate.html" />
-/// <reference path="documentheadertemplate.html" />
 (function () {
     'use strict';
 
@@ -23,6 +22,7 @@
         vm.docdropinner = true;
         $rootScope.pageIndex = "2";
         $rootScope.bodyclass = "bodymain";
+        $rootScope.displayOverflow = "";
         $rootScope.profileClass = "";
         // Onload show ui grid and hide error div
         //start
@@ -30,7 +30,19 @@
         vm.nodata = false;
         var screenHeight = 0;
         vm.searchResultsLength = 0;
+        vm.lazyloaderFilter = true;
+        vm.sortby = "desc";
+        vm.sortexp = "documentName"
         //end
+        //#region for checking whether the app is opened in outlook
+        var isAppOpenedInOutlook = $location.absUrl();
+        if (isAppOpenedInOutlook.indexOf("Outlook") > -1) {
+
+            vm.isOutlook = true;
+            //  vm.isOutlookAsAttachment(vm.isOutlook);
+            // }
+        }
+        //#endregion
 
         //#region scopes for displaying and hiding filter icons
         //start
@@ -39,6 +51,8 @@
         vm.createddatefilter = false;
         vm.clientfilter = false;
         vm.authorfilter = false;
+        vm.projectNamefilter = false;
+        vm.practiceGroupfilter = false;
         vm.checkoutfilter = false;
         //end
 
@@ -79,6 +93,7 @@
         vm.showPopUpHolder = false;
         vm.showErrorAttachmentInfo = false;
         vm.showFailedAtachments = false;
+        vm.showFailedAtachmentsBlock = false;
         vm.showSuccessAttachments = false;
         vm.failedFiles = [];
         vm.enableAttachment = false;
@@ -90,9 +105,13 @@
         vm.clientDropDown = false;
         vm.modifieddateDropDown = false;
         vm.AuthorDropDown = false;
+        vm.practiceGroupDropDown = false;
+        vm.projectNameDropDown = false;
         vm.CheckDropDown = false;
         vm.createddateDropDown = false;
         //End
+
+        
 
         //For setting dynamic height to the grid
         vm.getTableHeight = function () {
@@ -103,12 +122,55 @@
             }
             else {
                 return {
-                    height: ($window.innerHeight - 105) + "px"
+                    height: ($window.innerHeight - 93) + "px"
                 }
             }
         };
 
-        $templateCache.put('coldefheadertemplate.html', "<div><div role='button' class='ui-grid-cell-contents ui-grid-header-cell-primary-focus' col-index='renderIndex'><span class='ui-grid-header-cell-label ng-binding' title='Click to sort by {{ col.colDef.displayName }}'>{{ col.colDef.displayName }}<span id='asc{{col.colDef.field}}' style='float:right;display:none' class='padl10px'>↑</span><span id='desc{{col.colDef.field}}' style='float:right;display:none' class='padlf10'>↓</span></span></div></div>");
+        vm.switchFuction = function (columnName) {
+            var displayColumn= [];
+            switch (columnName) {
+                case "GridColumn1Header":
+                    displayColumn[0] = vm.documentConfigContent.GridColumn1Header;
+                    displayColumn[1] = vm.documentConfigContent.GridColumn1HeaderTitle;
+                    break;
+                case "GridColumn2Header":
+                    displayColumn[0] = vm.documentConfigContent.GridColumn2Header;
+                    displayColumn[1] = vm.documentConfigContent.GridColumn2HeaderTitle;
+                    break;
+                case "GridColumn3Header":
+                    displayColumn[0] = vm.documentConfigContent.GridColumn3Header;
+                    displayColumn[1] = vm.documentConfigContent.GridColumn3HeaderTitle;
+                    break;
+                case "GridColumn4Header":
+                    displayColumn[0] = vm.documentConfigContent.GridColumn4Header;
+                    displayColumn[1] = vm.documentConfigContent.GridColumn4HeaderTitle;
+                    break;
+                case "GridColumn5Header":
+                    displayColumn[0] = vm.documentConfigContent.GridColumn5Header;
+                    displayColumn[1] = vm.documentConfigContent.GridColumn5HeaderTitle;
+                    break;
+                case "GridColumn6Header":
+                    displayColumn[0] = vm.documentConfigContent.GridColumn6Header;
+                    displayColumn[1] = vm.documentConfigContent.GridColumn6HeaderTitle;
+                    break;
+                case "GridColumn7Header":
+                    displayColumn[0] = vm.documentConfigContent.GridColumn7Header;
+                    displayColumn[1] = vm.documentConfigContent.GridColumn7HeaderTitle;
+                    break;
+                case "GridColumn8Header":
+                    displayColumn[0] = vm.documentConfigContent.GridColumn8Header;
+                    displayColumn[1] = vm.documentConfigContent.GridColumn8HeaderTitle;
+                    break;
+                default:
+                    displayColumn = '';
+                    displayColumn[1] = '';
+                    break;
+            }
+            return displayColumn;
+        };
+
+        $templateCache.put('coldefheadertemplate.html', "<div><div role='button' class='ui-grid-cell-contents ui-grid-header-cell-primary-focus' col-index='renderIndex'><span class='ui-grid-header-cell-label ng-binding' title='Click to sort by'>{{ col.colDef.displayName }}<span id='asc{{col.colDef.field}}' style='float:right;display:none' class='padl10px'>↑</span><span id='desc{{col.colDef.field}}' style='float:right;display:none' class='padlf10'>↓</span></span></div></div>");
         var columnDefs1 = [];
         columnDefs1.push({
             field: 'checker',
@@ -120,262 +182,25 @@
             position: 0
         });
         angular.forEach(configs.search.searchColumnsUIPickerForDocument, function (value, key) {
-            if (key == "documentName") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn1Header,
-                        width: '278',
-                        enableHiding: false,
-                        cellTemplate: '../app/document/DocumentTemplates/DocumentCellTemplate.html',
-                        headerCellTemplate: '../app/document/DocumentTemplates/DocumentHeaderTemplate.html',
-                        position: value.position
-                    });
 
-                }
-            }
-            if (key == "documentClient") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn2Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '200',
-                        cellTemplate: '<div class="ui-grid-cell-contents">{{row.entity.documentClient=="" ? "NA":row.entity.documentClient}}</div>',
-                        enableCellEdit: true,
-                        headerCellTemplate: '../app/document/DocumentTemplates/ClientHeaderTemplate.html',
-                        position: value.position
-                    });
-
-                }
-            }
-            if (key == "documentClientId") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn3Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '150',
-                        headerCellTemplate: $templateCache.get('coldefheadertemplate.html'),
-                        cellTemplate: '<div class="ui-grid-cell-contents">{{row.entity.documentClientId==""?"NA":row.entity.documentClientId}}.{{row.entity.documentMatterId==""?"NA":row.entity.documentMatterId}}</div>',
-                        enableCellEdit: true,
-                        position: value.position
-                    });
-
-                }
-            }
-            if (key == "documentModifiedDate") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn4Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '195',
-                        cellTemplate: '<div class="ui-grid-cell-contents"  datefilter date="{{row.entity.documentModifiedDate}}"></div>',
-                        headerCellTemplate: '../app/document/DocumentTemplates/ModifiedDateHeaderTemplate.html',
-                        position: value.position
-                    });
-
-                }
-            }
-            if (key == "documentOwner") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn5Header,
-                        width: '140',
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        headerCellTemplate: '/app/document/DocumentTemplates/AuthorHeaderTemplate.html',
-                        visible: false,
-                        position: value.position
-                    });
-
-                }
-            }
-            if (key == "documentVersion") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn6Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '200',
-                        headerCellTemplate: $templateCache.get('coldefheadertemplate.html'),
-                        visible: false,
-                        position: value.position
-                    });
-
-                }
-            }
-            if (key == "documentCheckoutUser") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn7Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '210',
-                        headerCellTemplate: '/app/document/DocumentTemplates/CheckOutHeaderTemplate.html',
-                        cellTemplate: '<div class="ui-grid-cell-contents">{{row.entity.documentCheckoutUser=="" ? "NA":row.entity.documentCheckoutUser}}</div>',
-                        visible: false,
-                        position: value.position
-                    });
-
-                }
-            }
-            if (key == "documentCreatedDate") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn8Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        headerCellTemplate: '/app/document/DocumentTemplates/CreatedDateHeaderTemplate.html',
-                        cellTemplate: '<div class="ui-grid-cell-contents" datefilter date="{{row.entity.documentCreatedDate}}"></div>',
-                        visible: false,
-                        position: value.position
-                    });
-
-                }
-            }
-
-            if (key == "sitename") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
-            }
-            if (key == "documentMatter") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
-            }
-            if (key == "documentMatterId") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
-            }
-
-            if (key == "documentExtension") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
-            }
-            if (key == "documentIconUrl") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
-            }
-            if (key == "documentID") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
-            }
-            if (key == "documentOWAUrl") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
-            }
-            if (key == "documentUrl") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
-            }
-            if (key == "documentParentUrl" && value.position != -1) {
-                if (value.displayInUI == true) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
-            }
-            if (key == "documentMatterUrl") {
-                if (value.displayInUI == true && value.position != -1) {
-                    columnDefs1.push({
-                        field: key,
-                        displayName: vm.documentConfigContent.GridColumn10Header,
-                        headerCellClass: 'gridclass',
-                        cellClass: 'gridclass',
-                        width: '170',
-                        visible: false,
-                        position: value.position
-                    });
-                }
+            if (value.displayInUI == true && value.position != -1) {
+                var displaycolVal = vm.switchFuction(value.displayName);
+                columnDefs1.push({
+                    field: key,
+                    displayName: displaycolVal[0],
+                    width: value.width,
+                    enableHiding: value.enableHiding,
+                    cellTemplate: value.cellTemplate,
+                    headerCellTemplate: value.headerCellTemplate == "Custom" ? $templateCache.get('coldefheadertemplate.html').replace('Click to sort by', displaycolVal[1]) : value.headerCellTemplate,
+                    position: value.position,
+                    cellClass: value.cellClass,
+                    headerCellClass: value.headerCellClass,
+                    visible: value.defaultVisibleInGrid,
+                    //suppressRemoveSort: value.suppressRemoveSort
+                });
             }
         });
+            
         function getSortFunction(fieldName) {
             return function (col1, col2) {
                 return parseInt(col1[fieldName]) - parseInt(col2[fieldName]);
@@ -402,7 +227,7 @@
                 gridApi.selection.on.rowSelectionChanged($scope, function (row) {
                     //vm.selectedRow = row.entity
                     vm.selectedRows = $scope.gridApi.selection.getSelectedRows();
-                    var isRowPresent = $filter("filter")(vm.selectedRows, row.entity.documentID);
+                    var isRowPresent = $filter("filter")(vm.selectedRows, row.entity.docGuid);
                     if (isRowPresent.length > 0) {
                         row.entity.checker = true;
                     }
@@ -518,14 +343,7 @@
         //#region Code for attaching documents in compose more
         Office.initialize = function (reason) {
         }
-        var isAppOpenedInOutlook = $location.absUrl().split('|')[0].split('=')[2];
-        if (isAppOpenedInOutlook && isAppOpenedInOutlook === "Outlook") {
-
-            vm.isOutlook = true;
-            //  vm.isOutlookAsAttachment(vm.isOutlook);
-            // }
-        }
-        vm.isOutlook = true;
+        //vm.isOutlook = true;
         //vm.appType=$location.search().AppType;
         // vm.isOutlook ? vm.isOutlookAsAttachment(vm.isOutlook) : "";
         vm.isOutlookAsAttachment = function (isOutlook) {
@@ -562,14 +380,18 @@
                 vm.enableAttachment = true;
                 vm.errorAttachDocument = false;;
                 vm.asyncCallCompleted = 1;
-
                 vm.showFailedAtachments = false;
+                vm.showFailedAtachmentsBlock = false;
                 vm.failedFiles = [];
                 vm.showPopUpHolder = true;
                 vm.attachedProgressPopUp = true;
                 vm.attachInProgressMessage = configs.uploadMessages.attachInProgressMessage.replace("{0}", 1);
                 angular.forEach(vm.selectedRows, function (selRow) {
-                    var documentPath = trimEndChar(selRow.documentOWAUrl, "/");
+                    var docUrl = selRow.documentOWAUrl;
+                    if (selRow.documentOWAUrl.indexOf("WopiFrame.aspx") > 0) {
+                        docUrl = selRow.documentParentUrl + '/' + selRow.documentName + '.' + selRow.documentExtension
+                    }
+                    var documentPath = trimEndChar(docUrl, "/");
                     var documentName = '';
                     if (documentPath) {
                         documentPath = trimEndChar(documentPath.trim(), "/");
@@ -620,10 +442,10 @@
         function notifyAttachmentResult() {
             if (vm.showFailedAtachments) {
                 vm.showSuccessAttachments = false;
-                vm.showFailedAtachments = true;
+                vm.showFailedAtachmentsBlock = true;
                 vm.failedHeaderMessage = configs.uploadMessages.attachFailureMessage;
             } else {
-                vm.showFailedAtachments = false;
+                vm.showFailedAtachmentsBlock = false;
                 vm.showSuccessAttachments = true;
                 vm.failedHeaderMessage = '';
                 vm.failedFiles = [];
@@ -715,6 +537,9 @@
                 PageNumber: 1,
                 ItemsPerPage: vm.searchResultsLength,
                 SearchTerm: '',
+                IsUnique: false,
+                UniqueColumnName: '',
+                FilterValue:'',
                 Filters: {
                     ClientName: "",
                     ClientsList: [],
@@ -734,7 +559,10 @@
                     FromDate: "",
                     Name: "",
                     ResponsibleAttorneys: "",
+                    ProjectName: "",
                     SubareaOfLaw: "",
+                    ProjectID:"",
+                    PracticeGroup : "",
                     ToDate: ""
                 },
                 Sort:
@@ -750,18 +578,59 @@
             if (val != "") {
                 finalSearchText = "(" + vm.configSearchContent.ManagedPropertyFileName + ":" + val + "* OR " + vm.configSearchContent.ManagedPropertyDocumentId + ":" + val + "*)"
             }
-            vm.pagenumber = 1;
-            searchRequest.SearchObject.PageNumber = vm.pagenumber;
-            searchRequest.SearchObject.SearchTerm = finalSearchText;
-            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyFileName + "";
-            searchRequest.SearchObject.Sort.Direction = 0;
-            return documentResource.get(searchRequest).$promise;
+            var searchDocumentRequest = {
+                Client: {
+                    Url: configs.global.repositoryUrl
+                },
+                SearchObject: {
+                    PageNumber: 1,
+                    ItemsPerPage: 5,
+                    SearchTerm: finalSearchText,
+                    IsUnique: false,
+                    UniqueColumnName: '',
+                    FilterValue: '',
+                    Filters: {
+                        ClientName: "",
+                        ClientsList: [],
+                        PGList: [],
+                        AOLList: [],
+                        DateFilters: {
+                            CreatedFromDate: "",
+                            CreatedToDate: "",
+                            ModifiedFromDate: "",
+                            ModifiedToDate: "",
+                            OpenDateFrom: "",
+                            OpenDateTo: ""
+                        },
+                        DocumentAuthor: "",
+                        DocumentCheckoutUsers: "",
+                        FilterByMe: 0,
+                        FromDate: "",
+                        Name: "",
+                        ResponsibleAttorneys: "",
+                        ProjectName:"",
+                        PracticeGroup: "",
+                        ProjectID: "",
+                        SubareaOfLaw: "",
+                        ToDate: ""
+                    },
+                    Sort:
+                            {
+                                ByProperty: '' + vm.configSearchContent.ManagedPropertyFileName + '',
+                                Direction: 0, 
+                                ByColumn: "DocumentName"
+                            }
+                }
+            };
+            return documentResource.get(searchDocumentRequest).$promise;
         }
 
         vm.search = function () {
             vm.pagenumber = 1;
-            vm.documentname = 'All Documents'
-            vm.documentid = 1;
+            if (vm.documentid == 3) {
+                vm.documentname = 'All Documents'
+                vm.documentid = 1;
+            }
             vm.lazyloader = false;
             vm.divuigrid = false;
             vm.responseNull = false;
@@ -803,9 +672,45 @@
             });
         }
 
+        vm.filterSearch = function (val) {
+            if (val.length > 3) {
+
+                searchRequest.SearchObject.IsUnique = true;
+                searchRequest.SearchObject.FilterValue = val;
+               
+                if (vm.searchexp == vm.configSearchContent.ManagedPropertyFileName) {
+                    searchRequest.SearchObject.IsUnique = false;
+                    searchRequest.SearchObject.FilterValue = '';
+                    searchRequest.SearchObject.UniqueColumnName = '';
+                    vm.documentsearch("" + vm.configSearchContent.ManagedPropertyFileName + ":" + val + "*(* OR " + vm.configSearchContent.ManagedPropertyFileName + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentId + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentClientName + ":*)", vm.searchexp, false);
+                }
+                else if (vm.searchexp == vm.configSearchContent.ManagedPropertyDocumentClientName) {
+                    searchRequest.SearchObject.UniqueColumnName = vm.configSearchContent.ManagedPropertyDocumentClientName;
+                    vm.documentsearch("" + vm.configSearchContent.ManagedPropertyDocumentClientName + ":" + val + "*(* OR " + vm.configSearchContent.ManagedPropertyFileName + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentId + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentClientName + ":*)", vm.searchexp, false);
+                }
+                else if (vm.searchexp == vm.configSearchContent.ManagedPropertyMatterName) {
+                    searchRequest.SearchObject.UniqueColumnName = vm.configSearchContent.ManagedPropertyMatterName;
+                    vm.documentsearch("" + vm.configSearchContent.ManagedPropertyMatterName + ":" + val + "*(* OR " + vm.configSearchContent.ManagedPropertyFileName + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentId + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentClientName + ":*)", vm.searchexp, false);
+                }
+                else if (vm.searchexp == vm.configSearchContent.ManagedPropertyAuthor) {
+                    searchRequest.SearchObject.UniqueColumnName = vm.configSearchContent.ManagedPropertyAuthor;
+                    vm.documentsearch("" + vm.configSearchContent.ManagedPropertyAuthor + ":" + val + "*(* OR " + vm.configSearchContent.ManagedPropertyFileName + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentId + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentClientName + ":*)", vm.searchexp, false)
+                }
+                else if (vm.searchexp == vm.configSearchContent.ManagedPropertyPracticeGroup) {
+                    searchRequest.SearchObject.UniqueColumnName = vm.configSearchContent.ManagedPropertyPracticeGroup;
+                    vm.documentsearch("" + vm.configSearchContent.ManagedPropertyPracticeGroup + ":" + val + "*(* OR " + vm.configSearchContent.ManagedPropertyFileName + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentId + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentClientName + ":*)", vm.searchexp, false)
+                }
+                else if (vm.searchexp == vm.configSearchContent.ManagedPropertyDocumentCheckOutUser) {
+                    searchRequest.SearchObject.UniqueColumnName = vm.configSearchContent.ManagedPropertyDocumentCheckOutUser;
+                    vm.documentsearch("" + vm.configSearchContent.ManagedPropertyDocumentCheckOutUser + ":" + val + "*(* OR " + vm.configSearchContent.ManagedPropertyFileName + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentId + ":* OR " + vm.configSearchContent.ManagedPropertyDocumentClientName + ":*)", vm.searchexp, false)
+                }
+                
+            }
+        }
+
         //#region for searching matter by property and searchterm
         vm.documentsearch = function (term, property, bool) {
-            vm.lazyloader = false;
+            vm.lazyloaderFilter = false;
             vm.responseNull = false;
             searchRequest.SearchObject.PageNumber = 1;
             searchRequest.SearchObject.SearchTerm = term;
@@ -826,10 +731,20 @@
                     searchRequest.SearchObject.Filters.ClientName = term;
                     vm.clientfilter = true;
                 }
+                else if (property == "" + vm.configSearchContent.ManagedPropertyMatterName + "") {
+                    searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentLastModifiedTime + "";
+                    searchRequest.SearchObject.Filters.ProjectName = term;
+                    vm.projectNamefilter = true;
+                }
                 else if (property == "" + vm.configSearchContent.ManagedPropertyAuthor + "") {
                     searchRequest.SearchObject.Filters.DocumentAuthor = term;
                     vm.authorfilter = true;
-                } else if (property == "" + vm.configSearchContent.ManagedPropertyDocumentCheckOutUser + "") {
+                }
+                else if (property == "" + vm.configSearchContent.ManagedPropertyPracticeGroup + "") {
+                    searchRequest.SearchObject.Filters.PracticeGroup = term;
+                    vm.practiceGroupfilter = true;
+                }
+                else if (property == "" + vm.configSearchContent.ManagedPropertyDocumentCheckOutUser + "") {
                     searchRequest.SearchObject.Filters.DocumentCheckoutUsers = term;
                     vm.checkoutfilter = true;
                 }
@@ -847,14 +762,17 @@
                         vm.details = response;
                         vm.nodata = false;
                         vm.filternodata = true;
+                        searchRequest.SearchObject.IsUnique = false;
+                        searchRequest.SearchObject.FilterValue = '';
+                        searchRequest.SearchObject.UniqueColumnName = '';
                     }
-                    vm.lazyloader = true;
+                    vm.lazyloaderFilter = true;
                     vm.divuigrid = true;
                     $interval(function () { vm.showSortExp(); }, 2000, 3);
                 } else {
                     vm.divuigrid = true;
                     vm.nodata = false;
-                    vm.lazyloader = true;
+                    vm.lazyloaderFilter = true;
                     if (bool) {
                         vm.gridOptions.data = response;
                         vm.details = [];
@@ -864,6 +782,9 @@
                     } else {
                         vm.details = response;
                         vm.filternodata = false;
+                        searchRequest.SearchObject.IsUnique = false;
+                        searchRequest.SearchObject.FilterValue = '';
+                        searchRequest.SearchObject.UniqueColumnName = '';
                     }
                     searchRequest.SearchObject.SearchTerm = "";
                     searchRequest.SearchObject.Sort.ByProperty = "";
@@ -881,13 +802,13 @@
             searchRequest.SearchObject.PageNumber = 1;
             searchRequest.SearchObject.SearchTerm = "";
             if (name == "Modified Date") {
-                searchRequest.SearchObject.Filters.DateFilters.ModifiedFromDate = vm.modstartdate.format("yyyy-MM-ddT00:00:00Z");
-                searchRequest.SearchObject.Filters.DateFilters.ModifiedToDate = vm.modenddate.format("yyyy-MM-ddT23:59:59Z");
+                searchRequest.SearchObject.Filters.DateFilters.ModifiedFromDate = $filter('date')(vm.modstartdate, "yyyy-MM-ddT00:00:00") + "Z";
+                searchRequest.SearchObject.Filters.DateFilters.ModifiedToDate = $filter('date')(vm.modenddate, "yyyy-MM-ddT23:59:59") + "Z";
                 vm.moddatefilter = true;
             }
             if (name == "Created Date") {
-                searchRequest.SearchObject.Filters.DateFilters.CreatedFromDate = vm.startdate.format("yyyy-MM-ddT00:00:00Z");
-                searchRequest.SearchObject.Filters.DateFilters.CreatedToDate = vm.enddate.format("yyyy-MM-ddT23:59:59Z");
+                searchRequest.SearchObject.Filters.DateFilters.CreatedFromDate = $filter('date')(vm.startdate, "yyyy-MM-ddT00:00:00") + "Z";
+                searchRequest.SearchObject.Filters.DateFilters.CreatedToDate = $filter('date')(vm.enddate, "yyyy-MM-ddT23:59:59") + "Z";
                 vm.createddatefilter = true;
             }
             searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentLastModifiedTime + "";
@@ -908,6 +829,58 @@
                 }
             });
 
+        }
+
+        vm.clearAllFilter = function () {
+         
+            vm.documentheader = true;
+            vm.documentdateheader = true;
+            vm.nodata = false;
+            vm.pagenumber = 1;
+            searchRequest.SearchObject.PageNumber = vm.pagenumber;
+            vm.searchTerm = "";
+
+            searchRequest.SearchObject.SearchTerm = "";
+            searchRequest.SearchObject.Filters.Name = "";
+            searchRequest.SearchObject.Sort.ByProperty = "LastModifiedTime";
+            vm.documentfilter = false;
+
+            vm.clientSearchTerm = "";
+            searchRequest.SearchObject.Filters.ClientName = "";
+            vm.clientfilter = false;
+
+            vm.projectSearchTerm = "";
+            searchRequest.SearchObject.Filters.ProjectName = "";
+            vm.projectNamefilter = false;
+            
+
+            vm.checkedSearchTerm = "";
+            searchRequest.SearchObject.Filters.DocumentCheckoutUsers = "";
+            vm.checkoutfilter = false;
+
+            vm.authorSearchTerm = ""
+            searchRequest.SearchObject.Filters.DocumentAuthor = "";
+            vm.authorfilter = false;
+
+            vm.practiceGroupSearchTerm = ""
+            searchRequest.SearchObject.Filters.PracticeGroup = "";
+            vm.practiceGroupfilter = false;
+
+            searchRequest.SearchObject.Filters.DateFilters.ModifiedFromDate = "";
+            searchRequest.SearchObject.Filters.DateFilters.ModifiedToDate = "";
+            vm.modstartdate = "";
+            vm.modenddate = "";
+            vm.moddatefilter = false;
+
+            searchRequest.SearchObject.Filters.DateFilters.CreatedFromDate = "";
+            searchRequest.SearchObject.Filters.DateFilters.CreatedToDate = "";
+            vm.startDate = "";
+            vm.endDate = "";
+            vm.createddatefilter = false;
+
+            searchRequest.SearchObject.FilterValue = '';
+            searchRequest.SearchObject.IsUnique = false;
+            searchRequest.SearchObject.UniqueColumnName = '';
         }
 
         //#endregion
@@ -933,23 +906,33 @@
                 searchRequest.SearchObject.Sort.ByProperty = "LastModifiedTime";
                 vm.clientfilter = false;
             }
+            else if (property == vm.documentConfigContent.GridColumn3Header) {
+                vm.projectSearchTerm = "";
+                searchRequest.SearchObject.Filters.ProjectName = "";
+                searchRequest.SearchObject.Sort.ByProperty = "LastModifiedTime";
+                vm.projectNamefilter = false;
+            }
             else if (property == vm.documentConfigContent.GridColumn7Header) {
                 vm.checkedSearchTerm = "";
                 searchRequest.SearchObject.Filters.DocumentCheckoutUsers = "";
                 vm.checkoutfilter = false;
             }
-            else if (property == vm.documentConfigContent.GridColumn5Header) {
+            else if (property == vm.documentConfigContent.GridColumn4Header) {
                 vm.authorSearchTerm = ""
                 searchRequest.SearchObject.Filters.DocumentAuthor = "";
                 vm.authorfilter = false;
             }
-            else if (property == vm.documentConfigContent.GridColumn4Header) {
+            else if (property == vm.documentConfigContent.GridColumn6Header) {
+                vm.practiceGroupSearchTerm = ""
+                searchRequest.SearchObject.Filters.PracticeGroup = "";
+                vm.practiceGroupfilter = false;
+            } //For Date Columns
+            else if (property == vm.documentConfigContent.GridColumn5Header) {
                 searchRequest.SearchObject.Filters.DateFilters.ModifiedFromDate = "";
                 searchRequest.SearchObject.Filters.DateFilters.ModifiedToDate = "";
                 vm.modstartdate = "";
                 vm.modenddate = "";
                 vm.moddatefilter = false;
-            } else {
                 searchRequest.SearchObject.Filters.DateFilters.CreatedFromDate = "";
                 searchRequest.SearchObject.Filters.DateFilters.CreatedToDate = "";
                 vm.startDate = "";
@@ -989,6 +972,7 @@
 
         //#region for setting the document name in dropdown
         vm.SetDocuments = function (id, name) {
+            vm.clearAllFilter();
             vm.documentname = name;
             vm.documentid = id;
             vm.GetDocuments(id);
@@ -1006,8 +990,6 @@
             vm.searchClientTerm = "";
             vm.startdate = "";
             vm.enddate = "";
-            vm.sortexp = "";
-            vm.sortby = "";
             vm.lazyloader = false;
             vm.divuigrid = false;
             vm.nodata = false;
@@ -1017,6 +999,7 @@
                 searchRequest.SearchObject.PageNumber = 1;
                 searchRequest.SearchObject.SearchTerm = "";
                 searchRequest.SearchObject.Filters.FilterByMe = 0;
+                searchRequest.SearchObject.Sort.ByColumn = "documentName";
                 get(searchRequest, function (response) {
                     if (response == "") {
                         vm.gridOptions.data = response;
@@ -1035,11 +1018,14 @@
                         searchRequest.SearchObject.PageNumber = 1;
                         searchRequest.SearchObject.SearchTerm = "";
                         searchRequest.SearchObject.Filters.FilterByMe = 0;
-                        getPinnedDocuments(pinnedDocumentsRequest, function (pinresponse) {
+                        searchRequest.SearchObject.Sort.ByColumn = "documentName";
+                        getPinnedDocuments(searchRequest, function (pinresponse) {
                             if (pinresponse.length > 0) {
                                 angular.forEach(pinresponse, function (pinobj) {
                                     angular.forEach(response, function (res) {
-                                        if (pinobj.documentCreatedDate == res.documentCreatedDate) {
+                                        var pinnedUrl = pinobj.documentParentUrl + "/" + pinobj.documentName
+                                        var searchDocumentUrl = res.documentParentUrl + "/" + res.documentName
+                                        if (pinnedUrl == searchDocumentUrl) {
                                             if (res.ismatterdone == undefined && !res.ismatterdone) {
                                                 res.MatterInfo = "Unpin this matter";
                                                 res.ismatterdone = true;
@@ -1071,6 +1057,7 @@
                 searchRequest.SearchObject.PageNumber = 1;
                 searchRequest.SearchObject.SearchTerm = "";
                 searchRequest.SearchObject.Filters.FilterByMe = 1;
+                searchRequest.SearchObject.Sort.ByColumn = "documentName";
                 get(searchRequest, function (response) {
                     if (response == "") {
                         vm.gridOptions.data = response;
@@ -1083,11 +1070,13 @@
                         }
                         vm.divuigrid = true;
                         vm.nodata = false;
-                        getPinnedDocuments(pinnedDocumentsRequest, function (pinresponse) {
+                        getPinnedDocuments(searchRequest, function (pinresponse) {
                             if (pinresponse.length > 0) {
                                 angular.forEach(pinresponse, function (pinobj) {
                                     angular.forEach(response, function (res) {
-                                        if (pinobj.documentCreatedDate == res.documentCreatedDate) {
+                                        var pinnedUrl = pinobj.documentParentUrl + "/" + pinobj.documentName
+                                        var searchDocumentUrl = res.documentParentUrl + "/" + res.documentName
+                                        if (pinnedUrl == searchDocumentUrl) {
                                             if (res.ismatterdone == undefined && !res.ismatterdone) {
                                                 res.MatterInfo = "Unpin this matter";
                                                 res.ismatterdone = true;
@@ -1116,7 +1105,8 @@
                 var pinnedMattersRequest = {
                     Url: configs.global.repositoryUrl
                 }
-                getPinnedDocuments(pinnedMattersRequest, function (response) {
+                searchRequest.SearchObject.Sort.ByColumn = "documentName";
+                getPinnedDocuments(searchRequest, function (response) {
                     if (response == "") {
                         vm.gridOptions.data = response;
                         vm.lazyloader = true;
@@ -1136,6 +1126,8 @@
                         });
                         vm.gridOptions.data = response;
                         vm.lazyloader = true;
+                        vm.divuigrid = true;
+                        vm.nodata = false;
                         $interval(function () { vm.showSortExp(); }, 2000, 3);
                     }
                 });
@@ -1189,7 +1181,7 @@
                     DocumentClient: alldata.documentClient,
                     DocumentClientId: alldata.documentClientId,
                     DocumentClientUrl: alldata.documentClientUrl,
-                    DocumentMatter: alldata.documentMatter,
+                    DocumentMatter: alldata.documentMatterName,
                     DocumentMatterId: alldata.documentMatterId,
                     DocumentOwner: alldata.documentOwner,
                     DocumentUrl: alldata.documentUrl,
@@ -1202,6 +1194,7 @@
                     DocumentParentUrl: alldata.documentParentUrl,
                     DocumentID: alldata.documentID,
                     DocumentIconUrl: alldata.documentIconUrl,
+                    DocumentPracticeGroup: alldata.documentPracticeGroup,
                     PinType: "unpin"
                 }
             }
@@ -1321,286 +1314,220 @@
         //Start
 
         vm.FilterByType = function () {
-            get(searchRequest, function (response) {
-                vm.lazyloader = true;
-                if (response.errorCode == "404") {
-                    vm.divuigrid = false;
-                    vm.nodata = true;
-
-                } else {
-                    vm.divuigrid = true;
-                    vm.nodata = false;
-                    vm.gridOptions.data = response;
-                    //if (!$scope.$$phase) {
-                    //    $scope.$apply();
-                    //}
+            vm.lazyloader = true;
+            if (vm.documentid == 3) {
+                var pinnedDocumentsRequest = {
+                    Url: configs.global.repositoryUrl
                 }
-            });
+                getPinnedDocuments(searchRequest, function (response) {
+
+                    if (response == "" || response.errorCode == "500") {
+                        vm.gridOptions.data = response;
+                        vm.divuigrid = true;
+                        vm.nodata = true;
+                        $scope.errorMessage = response.message;
+                    } else {
+                        vm.divuigrid = true;
+                        vm.nodata = false;
+                        angular.forEach(response, function (res) {
+                            if (res.ismatterdone == undefined && !res.ismatterdone) {
+                                res.MatterInfo = "Unpin this document";
+                                res.ismatterdone = true;
+                            }
+                        });
+                        vm.gridOptions.data = response;
+                        //if (!$scope.$$phase) {
+                        //    $scope.$apply();
+                        //}
+                    }
+                });
+            }
+            else {
+                get(searchRequest, function (response) {
+                    if (response.errorCode == "404") {
+                        vm.divuigrid = false;
+                        vm.nodata = true;
+
+                    } else {
+                        vm.divuigrid = true;
+                        vm.nodata = false;
+                        vm.gridOptions.data = response;
+                        //if (!$scope.$$phase) {
+                        //    $scope.$apply();
+                        //}
+                    }
+                });
+            }
         }
 
         vm.sortby = "desc";
         vm.sortexp = "documentName";
         vm.showSortExp = function () {
-            if (vm.sortexp != "" || vm.sortexp != undefined || vm.sortby != "" || vm.sortby != undefined) {
-                if (vm.sortby == "asc") {
-                    angular.element("#desc" + vm.sortexp).css("display", "none");
-                } else {
-                    angular.element("#asc" + vm.sortexp).css("display", "none");
-                }
-                angular.element("#" + vm.sortby + vm.sortexp).css("display", "block");
-                if (!$scope.$$phase) {
-                    $scope.$apply();
-                }
+            if (vm.sortby == "asc") {
+                angular.element("#desc" + vm.sortexp).css("display", "none");
+            } else {
+                angular.element("#asc" + vm.sortexp).css("display", "none");
+            }
+            var elm = angular.element("#" + vm.sortby + vm.sortexp);
+            if (elm != undefined) {
+                elm.css("display", "block");
+            }
+            if (!$scope.$$phase) {
+                $scope.$apply();
             }
         }
+
+
         $interval(function () { vm.showSortExp(); }, 2500, 3);
+
+        //#region for sorting in ascending
+        vm.documentSortBy = function (byproperty,direction,bycolumn,sortexp,sortby) {
+            vm.pagenumber = 1;
+            searchRequest.SearchObject.PageNumber = 1;
+            searchRequest.SearchObject.Sort.ByProperty = byproperty;
+            searchRequest.SearchObject.Sort.Direction = direction;
+            searchRequest.SearchObject.Sort.ByColumn = bycolumn;
+            vm.FilterByType();
+            vm.sortby = sortby;
+            vm.sortexp = sortexp;
+            $interval(function () { vm.showSortExp(); }, 1500, 3);
+        }
+
+
         $scope.sortChangedDocument = function (grid, sortColumns) {
+            vm.lazyloader = false;
             vm.divuigrid = false;
             vm.responseNull = false;
             vm.gridOptions.data = [];
             $scope.gridApi.infiniteScroll.resetScroll();
             if (sortColumns.length != 0) {
-                if (sortColumns[0].name == vm.gridOptions.columnDefs[1].name) {
-                    if (sortColumns[0].sort != undefined) {
-                        if (vm.FileNameSort == undefined || vm.FileNameSort == "asc") {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyFileName + "";
-                            searchRequest.SearchObject.Sort.Direction = 0;
-                            vm.FilterByType();
-                            vm.FileNameSort = "desc";
-                            vm.sortby = "asc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                if (sortColumns[0].name != undefined) {
+                    if (sortColumns[0].name.trim().toLowerCase() == configs.search.searchColumnsUIPickerForDocument.documentName.keyName.trim().toLowerCase()) {
+                        if (sortColumns[0].sort != undefined) {
+                            if (vm.FileNameSort == undefined || vm.FileNameSort == "asc") {
+                                vm.FileNameSort = "desc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyFileName, 0, sortColumns[0].name, sortColumns[0].field, "asc");
+                            } else {
+                                vm.FileNameSort = "asc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyFileName, 1, sortColumns[0].name, sortColumns[0].field, "desc");
+                            }
                         } else {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyFileName + "";
-                            searchRequest.SearchObject.Sort.Direction = 1;
-                            vm.FilterByType();
-                            vm.FileNameSort = "asc";
-                            vm.sortby = "desc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                            vm.divuigrid = true;
+                            vm.nodata = false;
                         }
-                    } else {
-                        vm.divuigrid = true;
-                        vm.nodata = false;
                     }
-                }
-                else if (sortColumns[0].name == vm.gridOptions.columnDefs[2].name) {
-                    if (sortColumns[0].sort != undefined) {
-                        if (vm.DocumentClientSort == undefined || vm.DocumentClientSort == "asc") {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentClientName + "";
-                            searchRequest.SearchObject.Sort.Direction = 0;
-                            vm.FilterByType();
-                            vm.DocumentClientSort = "desc";
-                            vm.sortby = "asc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
-                        }
-                        else {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentClientName + "";
-                            searchRequest.SearchObject.Sort.Direction = 1;
-                            vm.FilterByType();
-                            vm.DocumentClientSort = "asc";
-                            vm.sortby = "desc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
-                        }
-                    } else {
-                        vm.divuigrid = true;
-                        vm.nodata = false;
-                    }
-                }
-                else if (sortColumns[0].name == vm.gridOptions.columnDefs[3].name) {
-                    if (sortColumns[0].sort != undefined) {
-                        if (vm.DocumentClientIDSort == undefined || vm.DocumentClientIDSort == "asc") {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentClientId + "";
-                            searchRequest.SearchObject.Sort.Direction = 0;
-                            vm.FilterByType();
-                            vm.DocumentClientIDSort = "desc";
-                            vm.sortby = "asc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                    else if (sortColumns[0].name.trim().toLowerCase() == configs.search.searchColumnsUIPickerForDocument.documentClient.keyName.trim().toLowerCase()) {
+                        if (sortColumns[0].sort != undefined) {
+                            if (vm.DocumentClientSort == undefined || vm.DocumentClientSort == "asc") {
+                                vm.DocumentClientSort = "desc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentClientName, 0, sortColumns[0].name, sortColumns[0].field, "asc");
+                            }
+                            else {
+                                vm.DocumentClientSort = "asc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentClientName, 1, sortColumns[0].name, sortColumns[0].field, "desc");
+                            }
                         } else {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentClientId + "";
-                            searchRequest.SearchObject.Sort.Direction = 1;
-                            vm.FilterByType();
-                            vm.DocumentClientIDSort = "asc";
-                            vm.sortby = "desc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                            vm.divuigrid = true;
+                            vm.nodata = false;
                         }
-
-                    } else {
-                        vm.divuigrid = true;
-                        vm.nodata = false;
                     }
-                }
-                else if (sortColumns[0].name == vm.gridOptions.columnDefs[4].name) {
-                    if (sortColumns[0].sort != undefined) {
-                        if (vm.ModiFiedDateSort == undefined || vm.ModiFiedDateSort == "asc") {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentLastModifiedTime + "";
-                            searchRequest.SearchObject.Sort.Direction = 0;
-                            vm.FilterByType();
-                            vm.ModiFiedDateSort = "desc";
-                            vm.sortby = "asc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                    else if (sortColumns[0].name.trim().toLowerCase() == configs.search.searchColumnsUIPickerForDocument.documentClientId.keyName.trim().toLowerCase()) {
+                        if (sortColumns[0].sort != undefined) {
+                            if (vm.DocumentClientIDSort == undefined || vm.DocumentClientIDSort == "asc") {
+                                vm.DocumentClientIDSort = "desc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentClientId, 0, sortColumns[0].name, sortColumns[0].field, "asc");
+                            } else {
+                                vm.DocumentClientIDSort = "asc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentClientId, 1, sortColumns[0].name, sortColumns[0].field, "desc");
+                            }
                         } else {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentLastModifiedTime + "";
-                            searchRequest.SearchObject.Sort.Direction = 1;
-                            vm.FilterByType();
-                            vm.ModiFiedDateSort = "asc";
-                            vm.sortby = "desc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                            vm.divuigrid = true;
+                            vm.nodata = false;
                         }
-
-                    } else {
-                        vm.divuigrid = true;
-                        vm.nodata = false;
                     }
-                }
-                else if (sortColumns[0].name == vm.gridOptions.columnDefs[5].name) {
-                    if (sortColumns[0].sort != undefined) {
-                        if (vm.AuthorSort == undefined || vm.AuthorSort == "asc") {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyAuthor + "";
-                            searchRequest.SearchObject.Sort.Direction = 0;
-                            vm.FilterByType();
-                            vm.AuthorSort = "desc";
-                            vm.sortby = "asc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                    else if (sortColumns[0].name.trim().toLowerCase() == configs.search.searchColumnsUIPickerForDocument.documentModifiedDate.keyName.trim().toLowerCase()) {
+                        if (sortColumns[0].sort != undefined) {
+                            if (vm.ModiFiedDateSort == undefined || vm.ModiFiedDateSort == "asc") {
+                                vm.ModiFiedDateSort = "desc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentLastModifiedTime, 0, sortColumns[0].name, sortColumns[0].field, "asc");
+                            } else {
+                                vm.ModiFiedDateSort = "asc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentLastModifiedTime, 1, sortColumns[0].name, sortColumns[0].field, "desc");
+                            }
                         } else {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyAuthor + "";
-                            searchRequest.SearchObject.Sort.Direction = 1;
-                            vm.FilterByType();
-                            vm.AuthorSort = "asc";
-                            vm.sortby = "desc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                            vm.divuigrid = true;
+                            vm.nodata = false;
                         }
-                    } else {
-                        vm.divuigrid = true;
-                        vm.nodata = false;
                     }
-                }
-                else if (sortColumns[0].name == vm.gridOptions.columnDefs[6].name) {
-                    if (sortColumns[0].sort != undefined) {
-                        if (vm.VersionSort == undefined || vm.VersionSort == "asc") {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentVersion + "";
-                            searchRequest.SearchObject.Sort.Direction = 0;
-                            vm.FilterByType();
-                            vm.VersionSort = "desc";
-                            vm.sortby = "asc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                    else if (sortColumns[0].name.trim().toLowerCase() == configs.search.searchColumnsUIPickerForDocument.documentOwner.keyName.trim().toLowerCase()) {
+                        if (sortColumns[0].sort != undefined) {
+                            if (vm.AuthorSort == undefined || vm.AuthorSort == "asc") {
+                                vm.AuthorSort = "desc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyAuthor, 0, sortColumns[0].name, sortColumns[0].field, "asc");
+                            } else {
+                                vm.AuthorSort = "asc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyAuthor, 1, sortColumns[0].name, sortColumns[0].field, "desc");
+                            }
                         } else {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentVersion + "";
-                            searchRequest.SearchObject.Sort.Direction = 1;
-                            vm.FilterByType();
-                            vm.VersionSort = "asc";
-                            vm.sortby = "desc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                            vm.divuigrid = true;
+                            vm.nodata = false;
                         }
-                    } else {
-                        vm.divuigrid = true;
-                        vm.nodata = false;
                     }
-                }
-                else if (sortColumns[0].name == vm.gridOptions.columnDefs[7].name) {
-                    if (sortColumns[0].sort != undefined) {
-                        if (vm.CheckoutSort == undefined || vm.CheckoutSort == "asc") {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentCheckOutUser + "";
-                            searchRequest.SearchObject.Sort.Direction = 0;
-                            vm.FilterByType();
-                            vm.CheckoutSort = "desc";
-                            vm.sortby = "asc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                    else if (sortColumns[0].name.trim().toLowerCase() == configs.search.searchColumnsUIPickerForDocument.documentVersion.keyName.trim().toLowerCase()) {
+                        if (sortColumns[0].sort != undefined) {
+                            if (vm.VersionSort == undefined || vm.VersionSort == "asc") {
+                                vm.VersionSort = "desc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentVersion, 0, sortColumns[0].name, sortColumns[0].field, "asc");
+                            } else {
+                                vm.VersionSort = "asc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentVersion, 1, sortColumns[0].name, sortColumns[0].field, "desc");
+                            }
                         } else {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyDocumentCheckOutUser + "";
-                            searchRequest.SearchObject.Sort.Direction = 1;
-                            vm.FilterByType();
-                            vm.CheckoutSort = "asc";
-                            vm.sortby = "desc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                            vm.divuigrid = true;
+                            vm.nodata = false;
                         }
-                    } else {
-                        vm.divuigrid = true;
-                        vm.nodata = false;
                     }
-                }
-                else if (sortColumns[0].name == vm.gridOptions.columnDefs[8].name) {
-                    if (sortColumns[0].sort != undefined) {
-                        if (vm.CreatedSort == undefined || vm.CreatedSort == "asc") {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyCreated + "";
-                            searchRequest.SearchObject.Sort.Direction = 0;
-                            vm.FilterByType();
-                            vm.CreatedSort = "desc";
-                            vm.sortby = "asc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                    else if (sortColumns[0].name.trim().toLowerCase() == configs.search.searchColumnsUIPickerForDocument.documentCheckoutUser.keyName.trim().toLowerCase()) {
+                        if (sortColumns[0].sort != undefined) {
+                            if (vm.CheckoutSort == undefined || vm.CheckoutSort == "asc") {
+                                vm.CheckoutSort = "desc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentCheckOutUser, 0, sortColumns[0].name, sortColumns[0].field, "asc");
+                            } else {
+                                vm.CheckoutSort = "asc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyDocumentCheckOutUser, 1, sortColumns[0].name, sortColumns[0].field, "desc");
+                            }
                         } else {
-                            vm.lazyloader = false;
-                            vm.pagenumber = 1;
-                            searchRequest.SearchObject.PageNumber = 1;
-                            searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyCreated + "";
-                            searchRequest.SearchObject.Sort.Direction = 1;
-                            vm.FilterByType();
-                            vm.CreatedSort = "asc";
-                            vm.sortby = "desc";
-                            vm.sortexp = sortColumns[0].field;
-                            $interval(function () { vm.showSortExp(); }, 1500, 3);
+                            vm.divuigrid = true;
+                            vm.nodata = false;
                         }
-                    } else {
-                        vm.divuigrid = true;
-                        vm.nodata = false;
+                    }
+                    else if (sortColumns[0].name.trim().toLowerCase() == configs.search.searchColumnsUIPickerForDocument.documentCreatedDate.keyName.trim().toLowerCase()) {
+                        if (sortColumns[0].sort != undefined) {
+                            if (vm.CreatedSort == undefined || vm.CreatedSort == "asc") {
+                                vm.CreatedSort = "desc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyCreated, 0, sortColumns[0].name, sortColumns[0].field, "asc");
+                            } else {
+                                vm.CreatedSort = "asc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyCreated, 1, sortColumns[0].name, sortColumns[0].field, "desc");
+                            }
+                        } else {
+                            vm.divuigrid = true;
+                            vm.nodata = false;
+                        }
+                    }
+                    else if (sortColumns[0].name.trim().toLowerCase() == configs.search.searchColumnsUIPickerForDocument.documentMatterName.keyName.trim().toLowerCase()) {
+                        if (sortColumns[0].sort != undefined) {
+                            if (vm.CreatedSort == undefined || vm.CreatedSort == "asc") {
+                                vm.CreatedSort = "desc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyMatterName, 0, sortColumns[0].name, sortColumns[0].field, "asc");
+                            } else {
+                                vm.CreatedSort = "asc";
+                                vm.documentSortBy(vm.configSearchContent.ManagedPropertyMatterName, 1, sortColumns[0].name, sortColumns[0].field, "desc");
+                            }
+                        } else {
+                            vm.divuigrid = true;
+                            vm.nodata = false;
+                        }
                     }
                 }
             } else {
@@ -1609,6 +1536,7 @@
                 vm.lazyloader = false;
                 searchRequest.SearchObject.Sort.ByProperty = "" + vm.configSearchContent.ManagedPropertyFileName + "";
                 searchRequest.SearchObject.Sort.Direction = 0;
+                searchRequest.SearchObject.Sort.ByColumn = sortColumns[0].name;
                 vm.FilterByType();
             }
         }
@@ -1618,7 +1546,7 @@
         //#region setting the grid options when window is resized
 
         angular.element($window).bind('resize', function () {
-            angular.element('#documentgrid .ui-grid').css('height', $window.innerHeight - 110);
+            angular.element('#documentgrid .ui-grid').css('height', $window.innerHeight - 93);
             if ($window.innerWidth < 380) {
                 angular.element('#documentgrid .ui-grid-viewport').addClass('viewport');
                 angular.element('#documentgrid .ui-grid-viewport').removeClass('viewportlg');
@@ -1632,8 +1560,10 @@
 
         //#region
         vm.typeheadselect = function (index, selected) {
-            vm.documentname = 'All Documents'
-            vm.documentid = 1;
+            if (vm.documentid == 3) {
+                vm.documentname = 'All Documents'
+                vm.documentid = 1;
+            }
             var searchToText = '';
             var finalSearchText = "";
             if (selected != "") {
@@ -1753,10 +1683,21 @@
                 vm.searchexp = "" + vm.configSearchContent.ManagedPropertyDocumentClientName + "";
                 vm.filtername = vm.documentConfigContent.GridColumn2Header;
             }
+
+            //Project Name
+            if (name === vm.documentConfigContent.GridColumn3Header) {
+                vm.searchexp = "" + vm.configSearchContent.ManagedPropertyMatterName + "";
+                vm.filtername = vm.documentConfigContent.GridColumn3Header;
+            }
             //Author
-            if (name === vm.documentConfigContent.GridColumn5Header) {
+            if (name === vm.documentConfigContent.GridColumn4Header) {
                 vm.searchexp = "" + vm.configSearchContent.ManagedPropertyAuthor + "";
-                vm.filtername = vm.documentConfigContent.GridColumn5Header;
+                vm.filtername = vm.documentConfigContent.GridColumn4Header;
+            }
+            //for Practice Group
+            if (name === vm.documentConfigContent.GridColumn6Header) {
+                vm.searchexp = "" + vm.configSearchContent.ManagedPropertyPracticeGroup + "";
+                vm.filtername = vm.documentConfigContent.GridColumn6Header;
             }
             //Check out to
             if (name === vm.documentConfigContent.GridColumn7Header) {
@@ -1764,15 +1705,15 @@
                 vm.filtername = vm.documentConfigContent.GridColumn7Header;
             }
             //Modified Date
-            if (name === vm.documentConfigContent.GridColumn4Header) {
-                vm.filtername = vm.documentConfigContent.GridColumn4Header;
+            if (name === vm.documentConfigContent.GridColumn5Header) {
+                vm.filtername = vm.documentConfigContent.GridColumn5Header;
             }
             //Created Date
             if (name == vm.documentConfigContent.GridColumn8Header) {
                 vm.filtername = vm.documentConfigContent.GridColumn8Header;
             }
             $timeout(function () {
-                if (name == vm.documentConfigContent.GridColumn4Header || name == vm.documentConfigContent.GridColumn8Header) {
+                if (name == vm.documentConfigContent.GridColumn5Header || name == vm.documentConfigContent.GridColumn8Header) {
                     vm.documentdateheader = false;
                 }
                 else {
@@ -1791,7 +1732,6 @@
             window.open(url, 'viewmatterwindow', 'toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=850,height=500')
         }
         //#endregion
-
 
     }]);
 
