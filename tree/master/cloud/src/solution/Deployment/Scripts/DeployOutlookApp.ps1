@@ -99,6 +99,13 @@ function removeAllApps()
 	}
  }
 
+$RootPath = Split-Path(Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
+$DeployPath = "$RootPath\deployments"
+#Show-Message -Message "Adding common library functions" -Type ([MessageType]::Warning)
+. "$RootPath\deployments\scripts\LibraryFunctions_AJ.ps1"
+#. "$RootPath\deployments\scripts\Deploy.ps1"
+#Show-Message -Message "Added common library functions" -Type ([MessageType]::Success)
+
 # Get the current directory of the script
 Function ScriptRoot {Split-Path $MyInvocation.ScriptName}
 $ScriptDirectory = (ScriptRoot)
@@ -108,15 +115,10 @@ Function Get-ParentDirectory {Split-Path -Parent(Split-Path $MyInvocation.Script
 $ParentDirectory = (Get-ParentDirectory)
 
 #Set Excel file path, uncomment below line if you want to use this script separately
-#$ExcelFilePath = "$ParentDirectory\MCDeploymentConfig.xlsx"
+$ExcelFilePath = "MCDeploymentConfig.xlsx"
     
 # Set log file path, uncomment below line if you want to use this script separately
-#$ErrorLogFile = "$ScriptDirectory\Logs\ErrorLog.txt"
-
-Show-Message -Message "Connecting to Exchange..." -Type ([MessageType]::Success)
-if($ExchangeCredential -eq $null) {
-	$ExchangeCredential = Get-Credential -Message "Enter credentials to access Exchange server."
-}
+$ErrorLogFile = "C:\NewMatterCenter\tree\master\cloud\src\solution\Deployment\Scripts\Logs\ErrorLog.txt"
 
 $appDirectory = Join-Path $DeployPath "Exchange App\"
 $AppFiles = Get-ChildItem –Path $appDirectory # Get the .app files
@@ -124,8 +126,9 @@ $AppNames = "Matter Center Beta" # App Names
 $AppNames = $AppNames.Split(';')
 
 Show-Message -Message "Reading inputs from Excel..." -Type ( [MessageType]::Warning )
-$ExcelValues = Read-FromExcel $ExcelFilePath "Config" ("ExchangePowerShellURL") $ErrorLogFile
+$ExcelValues = "https://ps.outlook.com/powershell"
 $sheetData = ReadSheet-FromExcel $ExcelFilePath "Create_Group" $ErrorLogFile
+Show-Message $ExcelValues
 $ExcelValues = $ExcelValues.Split(";")
 if($ExcelValues.length -le 0)
 {
@@ -140,6 +143,13 @@ for($iIterator=0; $iIterator -le $sheetData.length-1; $iIterator++) {
         $MatterCenterApps = $sheetData[$iIterator][3];
     }
 }
+$MatterCenterApps = "cardinal@bcbsncps.onmicrosoft.com;austin.test@bcbsncps.onmicrosoft.com;kelly.test@bcbsncps.onmicrosoft.com;wanda.test@bcbsncps.onmicrosoft.com"
+
+Show-Message -Message "Connecting to Exchange..." -Type ([MessageType]::Success)
+if($ExchangeCredential -eq $null) {
+	$ExchangeCredential = Get-Credential -Message "Enter credentials to access Exchange server."
+}
+
 
 # Prerequisites for On Premise Deployment
 # Run Enable-PsRemoting Power shell command on exchange CAS server

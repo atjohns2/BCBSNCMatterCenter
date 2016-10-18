@@ -209,7 +209,7 @@
                             cellTemplate = '../app/matter/MatterTemplates/AreaofLawHeaderTemplate.html';
                         }
                         else {
-                            columnName = vm.matterConfigContent.GridColumn4Header;
+                            columnName = vm.matterConfigContent.GridColumn9Header;
                             cellTemplate = '../app/matter/MatterTemplates/SubAreaofLawHeaderTemplate.html';
                         }
 
@@ -233,7 +233,7 @@
                         columnName = vm.matterConfigContent.GridColumn7Header
                     }
                     else {
-                        columnName = vm.matterConfigContent.GridColumn5Header
+                        columnName = vm.matterConfigContent.GridColumn10Header
                     }
                     if (value.displayInUI == true && value.position != -1) {
                         columnDefs1.push({
@@ -311,7 +311,7 @@
                     if (value.displayInUI == true) {
                         columnDefs1.push({
                             field: key,
-                            displayName: vm.matterConfigContent.GridColumn3Header,
+                            displayName: vm.matterConfigContent.GridColumn12Header,
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             headerCellTemplate: '../app/matter/MatterTemplates/AreaofLawHeaderTemplate.html',

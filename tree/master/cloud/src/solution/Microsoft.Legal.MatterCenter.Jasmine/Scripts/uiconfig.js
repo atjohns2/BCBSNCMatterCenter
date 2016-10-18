@@ -343,7 +343,7 @@
         "HomeMenuText": "Home",
         "Image1Title": "Search matters",
         "Image2Title": "Search documents",
-        "HelpRequesURL": oEnvironmentConfiguration.tenantUrl + "/sites/catalog",
+        "HelpRequesURL": oEnvironmentConfiguration.tenantUrl + "/sites/appcatalog",
         "FooterLabel": "Questions? Contact",
         "MenuImageCaption": "menu",
         "MenuImageTitle": "Matter center menu",

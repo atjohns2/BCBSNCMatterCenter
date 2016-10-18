@@ -423,7 +423,7 @@ function receiveMessage(event) {
 /* Attaches all the content on the page */
 function displayContent() {
    "use strict";    
-   var url = "/sites/catalog/SiteAssets/Matter Center Assets/Common Assets/Scripts/uiconfigforspo.js";
+   var url = "/sites/appcatalog/SiteAssets/Matter Center Assets/Common Assets/Scripts/uiconfigforspo.js";
    $.getScript( url, function() {
 	    /* Remove the hierarchy div if it already exists */
 	    var hierarchyDiv = $("#documentLibraryTitle");

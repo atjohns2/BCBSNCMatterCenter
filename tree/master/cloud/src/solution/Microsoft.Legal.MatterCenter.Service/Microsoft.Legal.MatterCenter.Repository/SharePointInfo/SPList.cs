@@ -16,6 +16,7 @@
 using Microsoft.SharePoint.Client;
 using Microsoft.SharePoint.Client.Utilities;
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -160,6 +161,7 @@ namespace Microsoft.Legal.MatterCenter.Repository
                 {
                     creationInfo.TemplateType = (int)ListTemplateType.DocumentLibrary;
                 }
+                Trace.TraceError("SP list result = " + result.ToString());
                 if (result)
                 {
                     List list = web.Lists.Add(creationInfo);
@@ -176,7 +178,14 @@ namespace Microsoft.Legal.MatterCenter.Repository
                     }
                     list.Update();
                     clientContext.Load(list, l => l.DefaultViewUrl);
-                    clientContext.ExecuteQuery();
+                    try
+                    {
+                        clientContext.ExecuteQuery();
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.TraceError("Matter Center error" + ex.Message + ex.InnerException + ex.StackTrace);
+                    }
                     result = true;
                 }
             }

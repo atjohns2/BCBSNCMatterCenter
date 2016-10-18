@@ -17,14 +17,14 @@ oGlobalConstants.sShareTitle = "Share";
 oGlobalConstants.sPinColumn = "UserPinDetails";
 oGlobalConstants.sUserAliasColumn = "UserAlias";
 oGlobalConstants.sListName = "UserPinnedMatter";
-oGlobalConstants.applicationInsightsId = "0c97a337-794c-4a52-a5e0-930c993981b0";
+oGlobalConstants.applicationInsightsId = "d817ebe1-c2ca-4024-80f0-5c317947ebde";
 oGlobalConstants.eventName = "";
 oGlobalConstants.Pin_Matter = "PinMatter";
 oGlobalConstants.Unpin_Matter = "UnpinMatter";
 oGlobalConstants.Share_Matter = "ShareMatter";
 oGlobalConstants.Go_To_OneNote = "GoToOneNote";
 oGlobalConstants.sProvisionMatterGroupName = "Provision Matter Users";
-oGlobalConstants.sCatalogSiteUrl = "https://bcbsnc.sharepoint.com/sites/apps";
+oGlobalConstants.sCatalogSiteUrl = "https://bcbsncps.sharepoint.com/sites/appcatalog";
 oGlobalConstants.sEditUserLink = "Edit users";
 oGlobalConstants.sAddUserLink = "Add users";
 oGlobalConstants.sNoBlockedUserMessage = "No blocked users";
@@ -47,7 +47,7 @@ oGlobalConstants.sEffectivePermissionUrl = "/{0}/_api/Web/lists/getbytitle('{1}'
 var oGlobalModalDialog = {
     width: 770,
     height: 500,
-    url: "https://BCBSNCMatterCenterWebApp09121754.azurewebsites.net/pages/managepermissions.aspx",
+    url: "https://bcbsncmattercenterps10051739.azurewebsites.net/pages/managepermissions.aspx",
     EditUserTitle: "Edit users",
     AddUserTitle: "Add users"
 };

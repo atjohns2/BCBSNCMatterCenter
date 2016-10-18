@@ -1429,7 +1429,7 @@ namespace Microsoft.Legal.MatterCenter.Web.Common
                 List<FieldUserValue> userEmailList = new List<FieldUserValue>();
                 if (null != matter.AssignUserNames)
                 {
-                    foreach (IList<string> userNames in matter.AssignUserNames)
+                    foreach (IList<string> userNames in matter.AssignUserEmails)
                     {
                         userList = matterRepositoy.ResolveUserNames(client, userNames).ToList();
                         foreach (FieldUserValue userEmail in userList)

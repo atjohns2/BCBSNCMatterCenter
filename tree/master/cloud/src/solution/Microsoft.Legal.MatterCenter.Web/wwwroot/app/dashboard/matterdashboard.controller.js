@@ -187,7 +187,7 @@
                     if (value.displayInUI == true && value.position != -1) {
                         columnDefs1.push({
                             field: key,
-                            displayName: vm.matterDashboardConfigs.GridColumn4Header,
+                            displayName: vm.matterDashboardConfigs.GridColumn6Header,
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             enableColumnMenu: false,
@@ -275,7 +275,7 @@
                     if (value.displayInUI == true) {
                         columnDefs1.push({
                             field: key,
-                            displayName: vm.matterDashboardConfigs.GridColumn3Header,
+                            displayName: vm.matterDashboardConfigs.GridColumn12Header,
                             headerCellClass: 'gridclass',
                             cellClass: 'gridclass',
                             enableColumnMenu: false,

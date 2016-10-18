@@ -112,6 +112,9 @@
                     case "GridColumn8Header":
                         displayColumn = vm.documentDashboardConfigs.GridColumn8Header;
                         break;
+                    case "GridColumn20Header":
+                        displayColumn = vm.documentDashboardConfigs.GridColumn20Header;
+                        break;
                     default:
                         displayColumn = '';
                         break;
@@ -1311,7 +1314,7 @@
                 vm.assetsuccess = false;
                 vm.closealldrops(null);
                 var Client = {
-                    Id: (row.entity.documentParentUrl + "/" + row.entity.documentName + "." + row.entity.documentExtension).replace(configs.uri.SPOsiteURL, ""),
+                    Id: (row.entity.documentParentUrl + "/" + row.entity.documentName + "." + row.entity.documentExtension).replace(configs.uri.SPOsiteURL, "").replace("/Forms/AllItems.aspx",""),
                     Name: row.entity.documentMatterUrl.replace(configs.uri.SPOsiteURL, "").replace(".aspx", "").replace("/sitepages/", "/"),
                     Url: row.entity.documentClientUrl
                 }

@@ -14,6 +14,7 @@
             cm.defaultConfilctCheck = false;
             cm.createContent = uiconfigs.CreateMatter;
             cm.createMatterTaxonomyColumnNames = configs.contentTypes.managedColumns;
+            cm.taxonomyDisplayNames = configs.contentTypes.displayColumns;
             cm.header = uiconfigs.Header;
             cm.chkConfilctCheck = undefined;
             cm.conflictRadioCheck = true;

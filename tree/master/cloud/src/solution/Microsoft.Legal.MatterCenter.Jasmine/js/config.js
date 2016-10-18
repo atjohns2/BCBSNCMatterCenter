@@ -14,7 +14,7 @@
         "appType": ""
     },
     "global": {
-        "repositoryUrl": oEnvironmentConfiguration.tenantUrl + "/sites/catalog"
+        "repositoryUrl": oEnvironmentConfiguration.tenantUrl + "/sites/AppCatalog"
     },
     "matter": {
         "StampedPropertyBlockedUploadUsers": "BlockedUploadUsers",
@@ -126,8 +126,8 @@
     },
     "contentTypes": {
         "managedColumns": {
-            "ColumnName1": "PracticeGroup",
-            "ColumnName2": "AreaOfLaw",
+            "ColumnName1": "Practice Group",
+            "ColumnName2": "Area Of Law",
             "ColumnName3": "SubareaOfLaw"
         }
     },

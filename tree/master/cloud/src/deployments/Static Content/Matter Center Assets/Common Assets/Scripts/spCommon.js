@@ -22,9 +22,9 @@ var oFooterLinks = {
 
 /* Common objects*/
 oCommonLinks = {
-    "AzureSiteUrl": "https://BCBSNCMatterCenterWebApp09121754.azurewebsites.net",
-    "sCatalogSite": "/sites/apps//",
-    "applicationInsightsId": "0c97a337-794c-4a52-a5e0-930c993981b0",
+    "AzureSiteUrl": "https://bcbsncmattercenterps10051739.azurewebsites.net",
+    "sCatalogSite": "/sites/appcatalog/",
+    "applicationInsightsId": "d817ebe1-c2ca-4024-80f0-5c317947ebde",
     "oMatterCenterAssetsLocation": "/SiteAssets/Matter Center Assets/Common Assets/",
 };
 

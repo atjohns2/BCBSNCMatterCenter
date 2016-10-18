@@ -204,15 +204,15 @@ $DocLibName = "Apps for Office"
 $FolderPath = Join-Path $DeployPath "Office App"
 
 #Fetch the Catalog URL from the Excel File
-Show-Message -Message "Fetching the Catalog URL from the Configuration File" -Type ( [MessageType]::Warning )
-$ExcelValues = Read-FromExcel $ExcelFilePath "Config" ("CatalogSiteURL") $ErrorLogFile
-$ExcelValues = $ExcelValues.Split(";")
-if($ExcelValues.length -le 0)
-{
-    Write-Log $ErrorLogFile "Error reading values from Excel file. Aborting!"
-    return $false
-}
-$webUrl = $ExcelValues[0]
+#Show-Message -Message "Fetching the Catalog URL from the Configuration File" -Type ( [MessageType]::Warning )
+#$ExcelValues = Read-FromExcel $ExcelFilePath "Config" ("CatalogSiteURL") $ErrorLogFile
+#$ExcelValues = $ExcelValues.Split(";")
+#if($ExcelValues.length -le 0)
+#{
+#    Write-Log $ErrorLogFile "Error reading values from Excel file. Aborting!"
+#    return $false
+#}
+$webUrl = "https://bcbsncps.sharepoint.com/sites/AppCatalog"
 if($webUrl -ne $null)
 {
 	Show-Message -Message "Successfully retrieved the Catalog URL" -Type ([MessageType]::Success)
