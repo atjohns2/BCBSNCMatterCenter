@@ -17,7 +17,7 @@
             cm.taxonomyDisplayNames = configs.contentTypes.displayColumns;
             cm.header = uiconfigs.Header;
             cm.chkConfilctCheck = undefined;
-            cm.conflictRadioCheck = true;
+            cm.conflictRadioCheck = false;
             cm.iShowSuccessMessage = 0;
             cm.oMandatoryRoleNames = [];
             cm.bMatterLandingPage = false;
@@ -33,6 +33,8 @@
             cm.showRoles = true;
             cm.showMatterId = true;
             cm.matterIdType = "Custom";
+            cm.currentExternalUser = {};
+            cm.getExternalUserNotification = true;
             $rootScope.displayOverflow = "";
             cm.nextButtonDisabled = false; cm.prevButtonDisabled = true;
             cm.taxonomyHierarchyLevels = configs.taxonomy.levels;
@@ -129,11 +131,14 @@
             cm.primaryMatterType = cm.errorPopUp = false;
             cm.matterGUID = "";
             cm.iCurrentPage = 1;
-            cm.assignPermissionTeams = [{ assignedUser: '', assignedRole: '', assignedPermission: '', assigneTeamRowNumber: 1, userConfirmation: false }];
+            cm.assignPermissionTeams = [{ assignedUser: '', assignedAllUserNamesAndEmails: '', assignedRole: '', assignedPermission: '', assigneTeamRowNumber: 1, userConfirmation: false, teamUsers: [] }];
+            cm.conflictUsers = { assignedUser: '', assignedAllUserNamesAndEmails: '', teamUsers: [] }
+            cm.blockedUserName = cm.conflictUsers.assignedUser;
+        //    cm.userAddedMorePeopleToTeamList = [{ teamRowNumber: 1,  }];
             cm.assignRoles = [];
             cm.assignPermissions = [];
             cm.secureMatterCheck = true;
-            cm.conflictRadioCheck = true;
+            cm.conflictRadioCheck = false;
             cm.includeTasks = false;
 
             ///* Function to generate 32 bit GUID */
@@ -327,7 +332,15 @@
             //optionsForUsers
 
             cm.searchUsers = function (val) {
-                cm.typehead = true;
+                cm.typehead = true;                        
+                if (val && val != null && val != "") {
+                    if (val.indexOf(';') > -1) {
+                        var res = val.split(";");
+                        if (res[res.length - 1]!="") {
+                            val = res[res.length - 1];
+                        } 
+                    }
+                }
                 var searchUserRequest = {
                     Client: {
 
@@ -379,6 +392,7 @@
 
             //call back function for getting the clientNamesList
             function getTaxonomyData() {
+                cm.popupContainerBackground = "Show";
                 getTaxonomyDetailsForClient(optionsForClientGroup, function (response) {
 
                     cm.clientNameList = response.clientTerms;
@@ -522,7 +536,9 @@
                         }
                         else {
                             var dMatterAreaOfLaw = "", dMatterPracticeGroup = "", dMatterSubAreOfLaw = "", dMatterTypes = "", dPrimaryMatterType = "", dMatterUsers = "", dMatterUserEmails = "", dMatterPermissions = "", dMatterRoles = "";
-
+                            cm.conflictUsers.assignedUser = "";
+                            cm.conflictUsers.assignedAllUserNamesAndEmails = "";
+                            cm.conflictUsers.teamUsers = []
                             var defaultMatterConfig = JSON.parse(result.code);
                             cm.matterName = defaultMatterConfig.DefaultMatterName;
                             cm.checkValidMatterName();
@@ -658,7 +674,9 @@
                                 assignPermTeam.assigneTeamRowNumber = aCount + 1;
 
                                 cm.assignPermissionTeams.push(assignPermTeam);
-                                cm.checkUserExists(assignPermTeam);
+                                if (assignPermTeam.assignedUser != "") {
+                                    cm.checkUserExists(assignPermTeam);
+                                }
                             }
 
 
@@ -1194,24 +1212,24 @@
                 var keepGoing = true;
                 var username = "";
                 if (cm.defaultConfilctCheck) {
-                    if (undefined==cm.selectedConflictCheckUser || "" == cm.selectedConflictCheckUser) {
+                    if (undefined == cm.selectedConflictCheckUser || "" == cm.selectedConflictCheckUser) {
                         cm.errTextMsg = cm.createContent.ErrorMessageConflictUser;
-                            //"Enter the conflict reviewers name (for auditing purposes).";
+                        //"Enter the conflict reviewers name (for auditing purposes).";
                         cm.errorBorder = "ccheckuser";
                         showErrorNotification("ccheckuser");
                         cm.errorPopUpBlock = true;
                         return false;
                     }
                     if (cm.conflictRadioCheck) {
-                    if (undefined == cm.blockedUserName || "" == cm.blockedUserName) {
-                        cm.errTextMsg = cm.createContent.ErrorMessageConflictUser1;
+                        if (undefined == cm.blockedUserName || "" == cm.blockedUserName) {
+                            cm.errTextMsg = cm.createContent.ErrorMessageConflictUser1;
                             //"Enter users that are conflicted with this matter.";
-                        cm.errorBorder = "cblockuser";
-                        showErrorNotification("cblockuser");
-                        cm.errorPopUpBlock = true;
-                        return false;
+                            cm.errorBorder = "cblockuser";
+                            showErrorNotification("cblockuser");
+                            cm.errorPopUpBlock = true;
+                            return false;
+                        }
                     }
-                }
                 }
 
                 if (cm.selectedConflictCheckUser && "" !== cm.selectedConflictCheckUser) {
@@ -1228,59 +1246,90 @@
                 }
                 if (cm.blockedUserName && "" !== cm.blockedUserName) {
                     username = getUserName(cm.blockedUserName + ";", false);
-                    if (-1 == cm.oSiteUsers.indexOf(username[0])) {
-                        //  cm.blockedUserName.trim()
-                        cm.errTextMsg = cm.createContent.ErrorMessageConflictUser1;
+                    username=cleanArray(username);
+                    for (var i = 0; i < username.length; i++) {
+                        if (-1 == cm.oSiteUsers.indexOf(username[i])) {
+                            //  cm.blockedUserName.trim()
+                            cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers1;
+                            //"Please enter valid team members.";
                             //"Enter users that are conflicted with this matter.";
-                        cm.errorBorder = "cblockuser";
-                        showErrorNotification("cblockuser");
-                        cm.errorPopUpBlock = true;
-                        return false;
+                            cm.errorBorder = "cblockuser";
+                            showErrorNotification("cblockuser");
+                            cm.errorPopUpBlock = true;
+                            return false;
+                        }
                     }
                 }
 
                 angular.forEach(cm.assignPermissionTeams, function (team) {
                     if (keepGoing) {
                         if (team.assignedUser && team.assignedUser != "") {//For loop
-                            username = getUserName(team.assignedUser + ";", false)
-                            if (team.userExsists) {
-                            if (-1 == cm.oSiteUsers.indexOf(username[0])) {
-                                //  cm.blockedUserName.trim()
-                                cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers1;
-                                    //"Please enter valid team members.";
-                                cm.errorBorder = "";
-                                cm.errorPopUpBlock = true;
-                                showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
-                                cm.errorBorder = "txtUser" + team.assigneTeamRowNumber; keepGoing = false;
+                            var usersEmails = getUserName(team.assignedUser, false);
+                            usersEmails = cleanArray(usersEmails);
+                            if (usersEmails.length !== team.teamUsers.length) {
+                                cm.checkUserExists(team);
+                                keepGoing = false;
                                 return false;
-
-                            }
                             } else {
-                                if (!team.userConfirmation) {
-                                    cm.checkUserExists(team);
-                                    if (!cm.invalidUserCheck) {
-                                        keepGoing = false;
-                                        return false;
-                                    }
-                                }
-                            }
+                                for (var j = 0; j < usersEmails.length; j++) {
+                                    angular.forEach(team.teamUsers, function (teamUser) {
+                                        if (keepGoing) {
+                                            if (teamUser.userName == usersEmails[j]) {
+                                                if (teamUser.userExsists) {
+                                                    if (-1 == cm.oSiteUsers.indexOf(usersEmails[j])) {
+                                                        //  cm.blockedUserName.trim()
+                                                        cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers1;
+                                                        //"Please enter valid team members.";
+                                                        cm.errorBorder = "";
+                                                        cm.errorPopUpBlock = true;
+                                                        showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
+                                                        cm.errorBorder = "txtUser" + team.assigneTeamRowNumber; keepGoing = false;
+                                                        return false;
+                                                    }
 
-                            if (cm.blockedUserName && cm.blockedUserName != "") {
-                                if (team.assignedUser == cm.blockedUserName) {
-                                    cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers2;
-                                        //"Please enter individual who is not conflicted.";
-                                    cm.errorBorder = "";
-                                    cm.errorPopUpBlock = true;
-                                    showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
-                                    cm.errorBorder = "txtUser" + team.assigneTeamRowNumber; keepGoing = false;
-                                    return false;
+                                                    if (cm.blockedUserName && cm.blockedUserName != "") {
+                                                        var blockedUserEmail = getUserName(cm.blockedUserName + ";", false);
+                                                        blockedUserEmail = cleanArray(blockedUserEmail);
+                                                        for (var i = 0; i < blockedUserEmail.length; i++) {
+                                                            if (usersEmails[j] == blockedUserEmail[i]) {
+                                                                cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers2;
+                                                                //"Please enter individual who is not conflicted.";
+                                                                cm.errorBorder = "";
+                                                                cm.errorPopUpBlock = true;
+                                                                showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
+                                                                cm.errorBorder = "txtUser" + team.assigneTeamRowNumber; keepGoing = false;
+                                                                return false;
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    if (!teamUser.userConfirmation) {
+                                                        cm.textInputUser = team;
+                                                        cm.currentExternalUser.rowNumber = team.assigneTeamRowNumber;
+                                                        cm.currentExternalUser.userIndex = j;
+                                                        cm.currentExternalUser.userName = teamUser.userName;
+                                                        if (cm.iCurrentPage == 2) {
+                                                            showNotificatoinMessages(team.assigneTeamRowNumber);
+                                                            cm.notificationPopUpBlock = true;
+                                                        }
+                                                        //cm.checkUserExists(team);
+                                                        //if (!cm.invalidUserCheck) {
+                                                        keepGoing = false;
+                                                        return false;
+                                                        //}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
                                 }
+
                             }
                         }
                         else {
-                            
+
                             showErrorNotificationAssignTeams(cm.createContent.ErrorMessageTeamMember1, team.assigneTeamRowNumber, "user")
-                          //  showErrorNotificationAssignTeams(team.assignedRole.name + " cannot be empty", team.assigneTeamRowNumber, "user")
+                            //  showErrorNotificationAssignTeams(team.assignedRole.name + " cannot be empty", team.assigneTeamRowNumber, "user")
                             cm.errorBorder = "txtUser" + team.assigneTeamRowNumber;
                             keepGoing = false;
                             return false;
@@ -1337,7 +1386,7 @@
                 var noresults = true;
                 if (typeheadelelen == 1) {
                     if (angular.element('.dropdown-menu li a')[0]) {
-                        if (angular.element('.dropdown-menu li a')[0].innerHTML == "No results found") {
+                        if (angular.element('.dropdown-menu li a')[0].innerHTML == "No results found" ||( $item && $item.name == "No results found")) {
                             noresults = false;
                             if ($event.keyCode == 9 || $event.keyCode == 13) {
                                 cm.user = angular.element('#' + $event.currentTarget.id).val();
@@ -1349,11 +1398,24 @@
                     if (value == "conflictcheckuser") {
                         cm.selectedConflictCheckUser = $item.name + '(' + $item.email + ')';
                     }
-                    if (value == "blockuser") {
-                        cm.blockedUserName = $item.name + '(' + $item.email + ')';
-                    }
-                    if (value == "team") {
-                        $label.assignedUser = $item.name + '(' + $item.email + ')';
+                    //if (value == "blockuser") {
+                    //    cm.blockedUserName = $item.name + '(' + $item.email + ')';
+                    //}
+                    if (value == "team" || value == "blockuser") {
+                        if ($label.assignedAllUserNamesAndEmails && $label.assignedAllUserNamesAndEmails.indexOf(';') > -1) {
+                            $label.assignedUser = $item.name + '(' + $item.email + ');';
+                            if ($label.assignedAllUserNamesAndEmails.indexOf($item.name) == -1) {
+                              
+                                $label.assignedAllUserNamesAndEmails = $label.assignedAllUserNamesAndEmails + $label.assignedUser;
+                                $label.assignedUser = $label.assignedAllUserNamesAndEmails;
+                            } else {
+                                $label.assignedUser = $label.assignedAllUserNamesAndEmails;
+                            }
+                        }
+                        else {
+                            $label.assignedUser = $item.name + '(' + $item.email + ');';
+                            $label.assignedAllUserNamesAndEmails = $item.name + '(' + $item.email + ');';
+                        }
                         cm.typehead = false;
                         cm.notificationPopUpBlock = false;
                     }
@@ -1369,8 +1431,27 @@
                 else {
                     if (fucnValue == "on-blurr") {
                         cm.user = username;
+                        $label.assignedAllUserNamesAndEmails = $label.assignedUser;
+                        var userEmailTxt = "";
+                        var userNames = getUserName($label.assignedUser, true);
+                        var userEmails = getUserName($label.assignedUser, false);
+                        var exsistingTeams = [];
+                        for (var i = 0; i < userEmails.length; i++) {
+                            if (userEmails[i] != "" && validateEmail(userEmails[i])) {
+                                angular.forEach($label.teamUsers, function (team) {
+                                    if (team.userName == userEmails[i]) {
+                                        exsistingTeams.push(team);                                       
+                                    }
+                                });
+                             var userNameAndEmailTxt = (userNames[i] == userEmails[i]) ? userEmails[i] : userNames[i] + "(" + userEmails[i] + ")";
+                             userEmailTxt = userEmailTxt + userNameAndEmailTxt + ";";
+                            }
+                        }
+                        $label.assignedAllUserNamesAndEmails = userEmailTxt;
+                        $label.teamUsers = exsistingTeams;
+
                     }
-                    if (fucnValue == "on-blurr" && typeheadelelen == 0 && noresults) {
+                    if (fucnValue == "on-blurr" && value == "teamuser" && typeheadelelen == 0 && noresults) {
                         cm.checkUserExists($label, $event);
                     }
                     if (!noresults) {
@@ -1379,7 +1460,8 @@
                             cm.selectedConflictCheckUser = "";
                         }
                         if (value == "blockuser") {
-                            $label = "";
+                            $label.assignedUser = "";
+                            $label.assignedUser = cm.user;
                             cm.blockedUserName = "";
                         }
                         if (value == "team") {
@@ -1395,8 +1477,8 @@
                 cm.arrAssignedUserName = [], cm.arrAssignedUserEmails = [], cm.userIDs = [];
                 var count = 1;
                 angular.forEach(cm.assignPermissionTeams, function (team) { //For loop
-                    cm.arrAssignedUserName.push(getUserName(team.assignedUser + ";", true));
-                    cm.arrAssignedUserEmails.push(getUserName(team.assignedUser + ";", false));
+                    cm.arrAssignedUserName.push(getUserName(team.assignedUser , true));
+                    cm.arrAssignedUserEmails.push(getUserName(team.assignedUser , false));
                     cm.userIDs.push("txtUser" + count++);
                 });
 
@@ -1558,6 +1640,9 @@
                     //  console.log(cm.assignPermissionTeams);
                     //  console.log(cm.assignPermissionTeams.length);
                 }
+                cm.notificationPopUpBlock = false;
+                cm.notificationBorder = "";
+                
             };
 
             if (localStorage.getItem("iLivePage")) {
@@ -1591,8 +1676,8 @@
                     cm.primaryMatterType = cm.errorPopUp = false;
                     cm.matterGUID = oPageData.matterGUID;
                     cm.iCurrentPage = 2;
-                    cm.isBackwardCompatible = oPageData.isBackwardCompatible;
-                    cm.isClientMappedWithHierachy = oPageData.isClientMappedWithHierachy
+                   // cm.isBackwardCompatible = oPageData.isBackwardCompatible;
+                   // cm.isClientMappedWithHierachy = oPageData.isClientMappedWithHierachy
                     cm.includeRssFeeds = (localStorage.getItem("IsRSSSelected") === "true");
                     cm.includeEmail = (localStorage.getItem("IsEmailOptionSelected") === "true");
                     cm.includeCalendar = (localStorage.getItem("IsCalendarSelected") === "true");
@@ -1621,6 +1706,8 @@
                         cm.conflictDate = new Date(cm.conflictDate);
                         cm.conflictRadioCheck = oPageData.ConflictRadioCheck;
                         cm.blockedUserName = oPageData.BlockedUserName;
+                        cm.conflictUsers.assignedUser = cm.blockedUserName;
+                        cm.conflictUsers.assignedAllUserNamesAndEmails = cm.blockedUserName;
                         cm.secureMatterCheck = oPageData.SecureMatterCheck;
                         cm.secureMatterCheck = (localStorage.getItem("IsRestrictedAccessSelected") === "true");
                         cm.assignPermissionTeams = oPageData.AssignPermissionTeams;
@@ -1716,17 +1803,83 @@
                 if (confirmUser) {
                     cm.notificationPopUpBlock = false;
                     cm.notificationBorder = "";
+                    var userEmail = getUserName(cm.textInputUser.assignedUser, false);
+                    userEmail = cleanArray(userEmail);
+                    for (var i = 0; i < userEmail.length; i++) {
+                        if (i == cm.currentExternalUser.userIndex && userEmail[i] == cm.currentExternalUser.userName && userEmail[i] != "") {                          
+                            angular.forEach(cm.textInputUser.teamUsers, function (teamUser) {
+                                if (teamUser.userName == userEmail[i]) {
+                                    teamUser.userConfirmation = true;
+                                    teamUser.userExsists = teamUser.userExsists;
+                                }
+                            });
+                        }
+                    }
                     cm.textInputUser.userConfirmation = true;
                     angular.element('#txtUser' + cm.textInputUser.assigneTeamRowNumber).attr('uservalue', cm.textInputUser.assignedUser);
                     angular.element('#txtUser' + cm.textInputUser.assigneTeamRowNumber).attr('confirm', "true");
                     angular.element('#txtUser' + cm.textInputUser.assigneTeamRowNumber).css('border-color', '#ccc');
+                    cm.getExternalUserNotification = true;
+
                 } else {
                     cm.notificationPopUpBlock = false;
-                    cm.textInputUser.assignedUser = "";
+                    cm.getExternalUserNotification = true;
+
+                    var userEmail = getUserName(cm.textInputUser.assignedUser, false);
+                    var userNames = getUserName(cm.textInputUser.assignedUser, true);
+                    userEmail = cleanArray(userEmail);
+                    userNames = cleanArray(userNames);
+                    var updatedUserEmail = "";
+                    for (var i = 0; i < userEmail.length; i++) {
+                        if (i != cm.currentExternalUser.userIndex && userEmail[i] != cm.currentExternalUser.userName && userEmail[i] != "") {
+                            if (userNames[i] == userEmail[i]) {
+                                updatedUserEmail = updatedUserEmail  + userEmail[i] + ";";
+                            } else {
+                                updatedUserEmail = updatedUserEmail + userNames[i] + "(" + userEmail[i] + ");";
+                            }
+                        }
+                    }
+                    cm.textInputUser.assignedUser = updatedUserEmail;
                     cm.textInputUser.userExsists = false;
                     cm.textInputUser.userConfirmation = false;
                     cm.notificationBorder = "";
                 }
+
+
+                angular.forEach(cm.assignPermissionTeams, function (team) {
+                    var keepGoing = true;
+                    if (keepGoing) {
+                        if (team.assignedUser && team.assignedUser != "") {//For loop
+                            var usersEmails = getUserName(team.assignedUser, false);
+                            usersEmails = cleanArray(usersEmails);
+                            for (var j = 0; j < usersEmails.length; j++) {
+                                angular.forEach(team.teamUsers, function (teamUser) {
+                                    if (keepGoing) {
+                                        if (teamUser.userName == usersEmails[j]) {
+                                            if (!teamUser.userConfirmation) {
+                                                cm.textInputUser = team;
+                                                cm.currentExternalUser.rowNumber = team.assigneTeamRowNumber;
+                                                cm.currentExternalUser.userIndex = j;
+                                                cm.currentExternalUser.userName = teamUser.userName;
+                                                if (cm.iCurrentPage == 2) {
+                                                    showNotificatoinMessages(team.assigneTeamRowNumber);
+                                                    cm.notificationPopUpBlock = true;
+                                                    keepGoing = false;
+                                                    return false;
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+
+            function validateEmail(email) {
+                var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+                return re.test(email);
             }
 
             cm.checkUserExists = function (teamDetails, $event) {
@@ -1734,22 +1887,20 @@
                 if ($event) {
                     $event.stopPropagation();
                 }
-                function validateEmail(email) {
-                    var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-                    return re.test(email);
-                }
+               
                 function validate(email) {
 
                     if (validateEmail(email)) {
                         var checkEmailExists = false;
                         if (cm.textInputUser && cm.textInputUser != "") {
                             var oldUserEmail = angular.element('#txtUser' + teamDetails.assigneTeamRowNumber).attr('uservalue');
-                            if (oldUserEmail !== email) {
+                            if (oldUserEmail.indexOf(email)==-1) {
                                 checkEmailExists = true;
                                 teamDetails.userConfirmation = false;
                             }
                             else {
                                 teamDetails.userConfirmation = teamDetails.userConfirmation;
+                                teamDetails.userExsists = false;
                                 cm.invalidUserCheck = true;
                             }
 
@@ -1762,53 +1913,93 @@
                                 Url: cm.clientUrl,
                                 Name: email
                             }
+                            cm.popupContainerBackground = "show";
                             userexists(optionsForUserExsists, function (response) {
                                 if (!response.isUserExistsInSite) {
                                     angular.forEach(cm.assignPermissionTeams, function (team) {
-                                        var userEmail = getUserName(team.assignedUser + ";", false)
-                                        if (userEmail[0] == email && team.assigneTeamRowNumber == teamDetails.assigneTeamRowNumber) {
-                                            cm.textInputUser = team;
-                                            team.userExsists = response.isUserExistsInSite;
-                                            team.userConfirmation = false;
-                                            if (cm.iCurrentPage == 2) {
-                                                showNotificatoinMessages(team.assigneTeamRowNumber);
+                                        var userEmail = getUserName(team.assignedUser+";", false);
+                                        for (var i = 0; i < userEmail.length; i++) {
+                                            if (userEmail[i] == email && team.assigneTeamRowNumber == teamDetails.assigneTeamRowNumber) {                                               
+                                                team.userExsists = response.isUserExistsInSite;
+                                                team.userConfirmation = false;
+                                               // team.assignedAllUserNamesAndEmails = email + ";";                                            
+                                                var userDetails = {};
+                                                userDetails.userName = userEmail[i];
+                                                userDetails.userExsists = team.userExsists;
+                                                userDetails.userConfirmation = false;
+                                                if (!team.teamUsers) {
+                                                    team.teamUsers = [];
+                                                }
+                                                var isRowPresent = $filter("filter")(team.teamUsers, userEmail[i]);
+                                                if (isRowPresent.length == 0) {
+                                                    team.teamUsers.push(userDetails);
+                                                }
+                                              //  cm.userAddedMorePeopleToTeamList.push(assignMultiTeam);
+                                                if (cm.iCurrentPage == 2 && cm.getExternalUserNotification) {
+                                                    cm.textInputUser = team;
+                                                    cm.currentExternalUser.userName = userEmail[i];
+                                                    cm.currentExternalUser.rowNumber = team.assigneTeamRowNumber;
+                                                    cm.currentExternalUser.userIndex = i;
+                                                    showNotificatoinMessages(team.assigneTeamRowNumber);
+                                                }
+                                                return false;
                                             }
-                                            return false;
                                         }
                                     });
-                                    if (cm.iCurrentPage == 2) {
+                                    if (cm.iCurrentPage == 2 && cm.getExternalUserNotification) {
                                         cm.notificationPopUpBlock = true;
+                                        cm.getExternalUserNotification = false;
                                     }
                                 }
                                 else {
                                     cm.notificationPopUpBlock = false;
                                     angular.forEach(cm.assignPermissionTeams, function (team) {
-                                        var userEmail = getUserName(team.assignedUser + ";", false)
-                                        if (userEmail[0] == email) {
-                                            cm.textInputUser = team;
-                                            team.userExsists = response.isUserExistsInSite;
-                                            team.userConfirmation = true;
-                                            cm.confirmUser(true);
+                                        var userEmail = getUserName(team.assignedUser+";", false);
+                                        for (var i = 0; i < userEmail.length; i++) {
+                                            if (userEmail[i] == email) {
+                                                cm.textInputUser = team;
+                                                team.userExsists = response.isUserExistsInSite;
+                                                team.userConfirmation = true;
+                                                cm.currentExternalUser.userName = userEmail[i];
+                                                cm.currentExternalUser.rowNumber = team.assigneTeamRowNumber;
+                                                cm.currentExternalUser.userIndex = i;
+                                                cm.confirmUser(true);
+                                                team.assignedUser = team.assignedAllUserNamesAndEmails;
+                                                var userDetails = {};
+                                                userDetails.userName = userEmail[i];
+                                                userDetails.userExsists = team.userExsists;
+                                                userDetails.userConfirmation = true;
+                                                if (!team.teamUsers) {
+                                                    team.teamUsers = [];
+                                                }
+                                                var isRowPresent = $filter("filter")(team.teamUsers, userEmail[i]);
+                                                if (isRowPresent.length == 0) {
+                                                    team.teamUsers.push(userDetails);
+                                                }
+                                            }
                                         }
                                     });
                                 }
+                                cm.popupContainerBackground = "hide";
                             });
                         }
                     }
                     else {
                         angular.forEach(cm.assignPermissionTeams, function (team) {
-                            var userEmail = getUserName(team.assignedUser + ";", false)
-                            if (userEmail[0] == email) {
-                                cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers3;
+                            var userEmail = getUserName(team.assignedUser+";", false);
+                            for (var i = 0; i < userEmail.length; i++) {
+                                if (userEmail[i] == email) {
+                                   cm.errTextMsg = cm.createContent.ErrorMessageEntityUsers3;
                                  //   "Please enter a valid email address.";
-                                cm.errorBorder = "";
-                                cm.errorStatus = true;
-                                cm.errorPopUpBlock = true;
-                                showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
-                                team.userConfirmation = false;
-                                angular.element('#txtUser' + team.assigneTeamRowNumber).attr('confirm', "false");
-                                cm.errorBorder = "txtUser" + team.assigneTeamRowNumber;
-                                return false;
+                                    cm.errorBorder = "";
+                                    cm.errorStatus = true;
+                                    cm.errorPopUpBlock = true;
+                                    showErrorNotificationAssignTeams(cm.errTextMsg, team.assigneTeamRowNumber, "user")
+                                    team.userConfirmation = false;
+                                    angular.element('#txtUser' + team.assigneTeamRowNumber).attr('confirm', "false");
+                                    cm.errorBorder = "txtUser" + team.assigneTeamRowNumber;
+                                    return false;
+                                }
                             }
 
                         });
@@ -1817,13 +2008,29 @@
                     }
                 }
                 if (userMailId && userMailId != "") {
-                    var pattern = /\(([^)]+)\)/, matches = userMailId.match(pattern);
-                    if (matches && matches.length > 0) {
-                        userMailId = matches[1];
+                    var userMailIdTerm = getUserName(userMailId + ";", false);
+                    userMailIdTerm = cleanArray(userMailIdTerm);
+                    for(var  i=0;i<userMailIdTerm.length;i++){
+                        //var pattern = /\(([^)]+)\)/, matches = userMailIdTerm[i].match(pattern);
+                        //if (matches && matches.length > 0) {
+                        //    userMailIdTerm[i] = matches[1];
+                        //} else {
+                            userMailIdTerm[i] = userMailIdTerm[i];
+                       // }
+                        validate(userMailIdTerm[i]);
                     }
-                    validate(userMailId);
 
                 }
+            }
+
+            function cleanArray(actual) {
+                var newArray = new Array();
+                for (var i = 0; i < actual.length; i++) {
+                    if (actual[i] && actual[i]!="") {
+                        newArray.push(actual[i]);
+                    }
+                }
+                return newArray;
             }
 
             function userexists(options, callback) {
@@ -1850,7 +2057,7 @@
                     if (cm.isBackwardCompatible) {
                         var team = {};
                         team.assigneTeamRowNumber = cm.assignPermissionTeams.length + 1;
-                        team.assignedUser = adalService.userInfo.profile.given_name + ' ' + adalService.userInfo.profile.family_name + '(' + adalService.userInfo.userName + ')';
+                        team.assignedUser = adalService.userInfo.profile.given_name + ' ' + adalService.userInfo.profile.family_name + '(' + adalService.userInfo.userName + ');';
                         team.userConfirmation = true;
                         team.userExsists = true;
 
@@ -2723,8 +2930,8 @@
                     for (nCount = 0; nCount < nlength; nCount++) {
                         if (arrAssigneTeams[nCount] && arrAssigneTeams[nCount].assignedRole) {
                             if (arrAssigneTeams[nCount].assignedRole && arrAssigneTeams[nCount].assignedRole.name) {
-                                if ("" !== arrAssigneTeams[nCount].assignedRole.name) {
-                                    arrRoles.push(arrAssigneTeams[nCount].assignedRole.name);
+                                if ("" !== arrAssigneTeams[nCount].assignedRole.name) {                                   
+                                    arrRoles.push(arrAssigneTeams[nCount].assignedRole.name);                                        
                                 }
                             }
                         }
@@ -2741,8 +2948,8 @@
                     for (nCount = 0; nCount < nlength; nCount++) {
                         if (arrAssigneTeams[nCount] && arrAssigneTeams[nCount].assignedPermission) {
                             if (arrAssigneTeams[nCount].assignedPermission && arrAssigneTeams[nCount].assignedPermission.name) {
-                                if ("" !== arrAssigneTeams[nCount].assignedPermission.name) {
-                                    arrPermissions.push(arrAssigneTeams[nCount].assignedPermission.name);
+                                if ("" !== arrAssigneTeams[nCount].assignedPermission.name) {                                   
+                                    arrPermissions.push(arrAssigneTeams[nCount].assignedPermission.name);                                       
                                 }
                             }
                         }
@@ -2753,6 +2960,7 @@
 
 
             function clearAllProperties() {
+                cm.iShowSuccessMessage = 0;
                 cm.clientId = "";
                 cm.selectedClient = "";
                 cm.clientUrl = "";
@@ -2777,11 +2985,16 @@
                 cm.matterGUID = "";
                 cm.iCurrentPage = 1;
                 cm.assignPermissionTeams = [{ assignedUser: '', assignedRole: '', assignedPermission: '', assigneTeamRowNumber: 1 }];
+                cm.conflictUsers.assignedUser = '';
+                cm.conflictUsers.assignedAllUserNamesAndEmails = "";
+                cm.conflictUsers.teamUsers = [];
+                cm.conflictUsers = { assignedUser: '', assignedAllUserNamesAndEmails: '', teamUsers: [] }
                 cm.assignRoles = [];
                 cm.assignPermissions = [];
                 cm.secureMatterCheck = true;
                 cm.conflictRadioCheck = false;
                 localStorage.iLivePage = 1;
+                cm.createButton = "Create";
                 localStorage.removeItem("oPageOneData");
                 localStorage.removeItem("oPageTwoData");
                 getMatterGUID();
@@ -2801,8 +3014,8 @@
                 oPageOneState.showRoles = cm.showRoles;
                 oPageOneState.showMatterId = cm.showMatterId;
                 oPageOneState.matterIdType = cm.matterIdType;
-                oPageOneState.isBackwardCompatible = cm.isBackwardCompatible;
-                oPageOneState.isClientMappedWithHierachy = cm.isClientMappedWithHierachy;
+                //oPageOneState.isBackwardCompatible = cm.isBackwardCompatible;
+                //oPageOneState.isClientMappedWithHierachy = cm.isClientMappedWithHierachy;
                 //  oPageOneState.chkConflictCheck = cm.chkConfilctCheck;
                 //  oPageOneState.oValidMatterName = oPageOneState.oValidMatterName;
 
@@ -2925,14 +3138,13 @@
                                             if (cm.isMatterDescriptionMandatory) {
                                                 var sCurrentMatterDesc = cm.matterDescription;
                                                 if (undefined !== sCurrentMatterDesc && null !== sCurrentMatterDesc && "" !== sCurrentMatterDesc) {
-                                                    sCurrentMatterDesc = sCurrentMatterDesc.trim();
-                                                    bInValid = true;
-                                                    //var arrValidMatch = sCurrentMatterDesc.match(RegularExpression);
-                                                    //if (null === arrValidMatch || arrValidMatch[0] !== sCurrentMatterDesc) {
-                                                    //    bInValid = false;
-                                                    //} else {
-                                                    //    bInValid = true;
-                                                    //}
+                                                    sCurrentMatterDesc = sCurrentMatterDesc.trim(); bInValid = false;
+                                                    var arrValidMatch = sCurrentMatterDesc.match(RegularExpression);
+                                                    if (null === arrValidMatch || arrValidMatch[0] !== sCurrentMatterDesc) {
+                                                        bInValid = false;
+                                                    } else {
+                                                        bInValid = true;
+                                                    }
                                                 }
                                                 else {
                                                     cm.errTextMsg = cm.createContent.ErrorMessageEntityDescription;
@@ -3027,7 +3239,7 @@
 
                 }
                 else if (iCurrPage == 2) {
-
+                    cm.blockedUserName = cm.conflictUsers.assignedUser;
                     if (cm.defaultConfilctCheck) {
                         if (undefined !== cm.chkConfilctCheck && true == cm.chkConfilctCheck) {
 
