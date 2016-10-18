@@ -396,6 +396,7 @@
                 getTaxonomyDetailsForClient(optionsForClientGroup, function (response) {
 
                     cm.clientNameList = response.clientTerms;
+                    cm.getSelectedClientValue(cm.clientNameList[0]);
                     // jQuery('#myModal').modal('show');
                     // optionsForPracticeGroup.Client.Url=cm.clientUrl;
                     getTaxonomyDetailsForPractice(optionsForPracticeGroup, function (response) {
